@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+    /* Typography */
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+    /* ADNU Blue & Gold Accent Theme */
+    --color-brand-blue: #0f3a6e;
+    --color-brand-blue-hover: #0a2952;
+    --color-brand-blue-light: #eff4fa;
+
+    --color-brand-gold: #d4af37;
+    --color-brand-gold-hover: #b5952f;
+    --color-brand-gold-light: #fbf7ec;
+
+    /* Modern Neutral Palette for All-White mode */
+    --color-surface-bg: #f8fafc;
+    --color-surface-card: #ffffff;
+    --color-border-subtle: #f1f5f9;
+
+    /* Sleek Shadows */
+    --shadow-soft: 0 4px 20px -2px rgba(15, 58, 110, 0.04);
+    --shadow-float: 0 10px 40px -10px rgba(15, 58, 110, 0.08);
+}
+
+@layer base {
+    body {
+        @apply bg-surface-bg text-slate-800 font-sans antialiased;
+    }
+}
+
+@layer components {
+    .adnu-calendar {
+        font-family: var(--font-sans);
+    }
+
+    .adnu-calendar .rbc-month-view {
+        border: none;
+        background: transparent;
+    }
+
+    .adnu-calendar .rbc-month-header {
+        border-bottom: 1px solid var(--color-border-subtle);
+        background: rgba(248, 250, 252, 0.7);
+    }
+
+    .adnu-calendar .rbc-header {
+        padding: 14px 8px;
+        text-transform: uppercase;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: #94a3b8;
+        border-right: 1px solid var(--color-border-subtle);
+    }
+
+    .adnu-calendar .rbc-header:last-child {
+        border-right: none;
+    }
+
+    .adnu-calendar .rbc-month-row {
+        min-height: 140px;
+    }
+
+    .adnu-calendar .rbc-row-bg {
+        border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    .adnu-calendar .rbc-day-bg {
+        border-right: 1px solid var(--color-border-subtle);
+    }
+
+    .adnu-calendar .rbc-day-bg:last-child {
+        border-right: none;
+    }
+
+    .adnu-calendar .rbc-date-cell {
+        padding: 10px 12px 0;
+        text-align: left;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    .adnu-calendar .rbc-date-cell.rbc-now {
+        color: var(--color-brand-blue);
+        font-weight: 700;
+    }
+
+    .adnu-calendar .rbc-today {
+        background: rgba(15, 58, 110, 0.06);
+    }
+
+    .adnu-calendar .rbc-off-range-bg {
+        background: #f8fafc;
+    }
+
+    .adnu-calendar .rbc-event {
+        border: 0;
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 10px;
+        font-weight: 700;
+        box-shadow: none;
+    }
+
+    .adnu-calendar .rbc-event-label {
+        display: none;
+    }
+
+    .adnu-calendar .rbc-event-content {
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .adnu-calendar .rbc-show-more {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--color-brand-blue);
+    }
+
+    .adnu-calendar .adnu-event {
+        background: rgba(15, 58, 110, 0.08);
+        border-left: 3px solid var(--color-brand-blue);
+        color: var(--color-brand-blue);
+    }
+
+    .adnu-calendar .adnu-event--basketball {
+        background: rgba(15, 58, 110, 0.08);
+        border-left-color: var(--color-brand-blue);
+        color: var(--color-brand-blue);
+    }
+
+    .adnu-calendar .adnu-event--volleyball {
+        background: rgba(100, 116, 139, 0.12);
+        border-left-color: #64748b;
+        color: #475569;
+    }
+
+    .adnu-calendar .adnu-event--maintenance {
+        background: rgba(217, 119, 6, 0.12);
+        border-left-color: #d97706;
+        color: #b45309;
+    }
+
+    .adnu-calendar .adnu-event--emergency {
+        background: rgba(220, 38, 38, 0.12);
+        border-left-color: #dc2626;
+        color: #b91c1c;
+    }
+}
