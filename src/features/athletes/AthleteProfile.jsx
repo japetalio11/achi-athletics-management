@@ -1,5 +1,5 @@
+import { useState } from "react";
 import {
-  ArrowLeft,
   ShieldCheck,
   TrendingUp,
   FileText,
@@ -10,9 +10,21 @@ import {
   MoreVertical,
   Plus,
 } from "lucide-react";
-import { useNavigation } from "../../contexts/NavigationContext";
+import {
+  Field,
+  FeedbackPanel,
+  Modal,
+  PrimaryButton,
+  SecondaryButton,
+  SelectInput,
+  TextArea,
+  TextInput,
+} from "../../components/ui/Modal";
 
 export function AthleteProfile({ athlete }) {
+  const [modal, setModal] = useState(null);
+  const closeModal = () => setModal(null);
+
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Top Profile Card */}
@@ -83,7 +95,11 @@ export function AthleteProfile({ athlete }) {
                 {athlete.year}
               </span>
             </div>
-            <button className="flex items-center gap-2 bg-brand-blue text-white px-5 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide mt-2">
+            <button
+              type="button"
+              onClick={() => setModal({ type: "status" })}
+              className="flex items-center gap-2 bg-brand-blue text-white px-5 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide mt-2"
+            >
               <ShieldCheck className="w-4 h-4" />
               Elite Status
             </button>
@@ -102,7 +118,11 @@ export function AthleteProfile({ athlete }) {
                 <br />
                 Monitoring
               </h2>
-              <button className="text-[12px] font-semibold text-brand-blue hover:underline">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "report" })}
+                className="text-[12px] font-semibold text-brand-blue hover:underline"
+              >
                 Full Report
               </button>
             </div>
@@ -157,13 +177,26 @@ export function AthleteProfile({ athlete }) {
               <h2 className="text-[16px] font-bold text-slate-900">
                 Digital Documents
               </h2>
-              <button className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "document" })}
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
+              <button
+                type="button"
+                onClick={() =>
+                  setModal({
+                    type: "view-document",
+                    payload: "Scholarship_Agreement.pdf",
+                  })
+                }
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
+              >
                 <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
@@ -175,9 +208,18 @@ export function AthleteProfile({ athlete }) {
                     Signed: Oct 12, 2023 • 2.4 MB
                   </p>
                 </div>
-              </div>
+              </button>
 
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
+              <button
+                type="button"
+                onClick={() =>
+                  setModal({
+                    type: "view-document",
+                    payload: "Medical_Clearance_2024.docx",
+                  })
+                }
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
+              >
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-brand-blue flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
@@ -189,9 +231,18 @@ export function AthleteProfile({ athlete }) {
                     Expires: Jun 20, 2024 • 1.1 MB
                   </p>
                 </div>
-              </div>
+              </button>
 
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
+              <button
+                type="button"
+                onClick={() =>
+                  setModal({
+                    type: "view-document",
+                    payload: "Athlete_ID_Scan.png",
+                  })
+                }
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
+              >
                 <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
                   <ImageIcon className="w-5 h-5" />
                 </div>
@@ -203,7 +254,7 @@ export function AthleteProfile({ athlete }) {
                     Verified • 850 KB
                   </p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -281,7 +332,11 @@ export function AthleteProfile({ athlete }) {
               <h2 className="text-[16px] font-bold text-slate-900">
                 Equipment History
               </h2>
-              <button className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "issue" })}
+                className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide"
+              >
                 <Plus className="w-3.5 h-3.5" />
                 ISSUE ITEM
               </button>
@@ -324,7 +379,16 @@ export function AthleteProfile({ athlete }) {
                       </span>
                     </td>
                     <td className="p-5 pr-7 text-right">
-                      <button className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setModal({
+                            type: "equipment-action",
+                            payload: "Nike Air Zoom Victory",
+                          })
+                        }
+                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
@@ -353,7 +417,16 @@ export function AthleteProfile({ athlete }) {
                       </span>
                     </td>
                     <td className="p-5 pr-7 text-right">
-                      <button className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setModal({
+                            type: "equipment-action",
+                            payload: "Resistance Band Set (L4)",
+                          })
+                        }
+                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
@@ -384,7 +457,16 @@ export function AthleteProfile({ athlete }) {
                       </span>
                     </td>
                     <td className="p-5 pr-7 text-right">
-                      <button className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setModal({
+                            type: "equipment-action",
+                            payload: "Polar H10 Heart Monitor",
+                          })
+                        }
+                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
@@ -430,6 +512,170 @@ export function AthleteProfile({ athlete }) {
           </div>
         </div>
       </div>
+      <AthleteProfileModal modal={modal} onClose={closeModal} athlete={athlete} />
     </div>
+  );
+}
+
+function AthleteProfileModal({ modal, onClose, athlete }) {
+  if (!modal) return null;
+
+  const footer = (
+    <>
+      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+      <PrimaryButton onClick={onClose}>Save</PrimaryButton>
+    </>
+  );
+
+  if (modal.type === "status") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Update Athlete Status"
+        description={`Adjust clearance and scholarship markers for ${athlete.name}.`}
+        footer={footer}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Medical status">
+            <SelectInput defaultValue={athlete.status}>
+              <option>Cleared</option>
+              <option>Injured</option>
+              <option>Pending Review</option>
+            </SelectInput>
+          </Field>
+          <Field label="Scholarship">
+            <SelectInput defaultValue={athlete.scholarship}>
+              <option>Full Scholarship</option>
+              <option>Partial Scholarship</option>
+              <option>Walk-on</option>
+            </SelectInput>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Status note">
+              <TextArea placeholder="Summarize why this status is being updated." />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "report") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Academic Performance Report"
+        description="Prepare a detailed report for coaching and compliance review."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Close</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Generate report</PrimaryButton>
+          </>
+        }
+      >
+        <FeedbackPanel tone="info" title={`${athlete.gpa} GPA currently tracked`}>
+          The modal is ready for historical grade, eligibility, and attendance
+          data once the backend is connected.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "document") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add Document"
+        description="Register a new file record on the athlete profile."
+        footer={footer}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Document name">
+            <TextInput placeholder="Medical clearance" />
+          </Field>
+          <Field label="Document type">
+            <SelectInput defaultValue="Medical">
+              <option>Medical</option>
+              <option>Scholarship</option>
+              <option>Identification</option>
+              <option>Academic</option>
+            </SelectInput>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Notes">
+              <TextArea placeholder="Expiration date, verification notes, or owner..." />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "view-document") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.payload}
+        description="Document details are shown here until file preview storage is connected."
+        footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
+      >
+        <FeedbackPanel tone="success" title="Verified profile document">
+          This placeholder detail view can later include file preview, expiry
+          status, download, and audit trail actions.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "issue") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Issue Equipment"
+        description={`Assign a new item to ${athlete.name}.`}
+        footer={footer}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Asset">
+            <TextInput placeholder="Search equipment ID or name" />
+          </Field>
+          <Field label="Due date">
+            <TextInput type="date" />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Issue notes">
+              <TextArea placeholder="Fit notes, coach authorization, or return conditions..." />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Equipment Actions"
+      description={`Manage ${modal.payload}.`}
+      footer={footer}
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <button className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:border-brand-blue/20 hover:bg-brand-blue-light">
+          View details
+        </button>
+        <button className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:border-brand-blue/20 hover:bg-brand-blue-light">
+          Mark returned
+        </button>
+        <button className="rounded-2xl border border-red-100 bg-red-50 p-4 text-left text-[13px] font-bold text-red-700 hover:bg-red-100">
+          Report issue
+        </button>
+      </div>
+    </Modal>
   );
 }

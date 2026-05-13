@@ -1,4 +1,15 @@
-import { Download, Plus, ClipboardList, ArrowUpRight, Wrench, QrCode, Camera, AlertTriangle, Filter, MoreVertical, Search, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Download, Plus, ClipboardList, ArrowUpRight, Wrench, QrCode, Camera, AlertTriangle, Filter, MoreVertical, ArrowRight } from "lucide-react";
+import {
+  Field,
+  FeedbackPanel,
+  Modal,
+  PrimaryButton,
+  SecondaryButton,
+  SelectInput,
+  TextArea,
+  TextInput,
+} from "../../components/ui/Modal";
 
 const mockEquipment = [
   {
@@ -36,6 +47,9 @@ const mockEquipment = [
 ];
 
 export function InventoryHub() {
+  const [modal, setModal] = useState(null);
+  const closeModal = () => setModal(null);
+
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -45,11 +59,19 @@ export function InventoryHub() {
           <p className="text-[13px] text-slate-500 mt-1">Manage, track, and maintain the varsity athletic equipment ecosystem.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-surface-card border border-border-subtle/50 text-slate-600 px-4 py-2.5 rounded-full font-medium hover:bg-slate-50 transition-colors shadow-soft text-[12px] tracking-wide">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "export" })}
+            className="flex items-center gap-2 bg-surface-card border border-border-subtle/50 text-slate-600 px-4 py-2.5 rounded-full font-medium hover:bg-slate-50 transition-colors shadow-soft text-[12px] tracking-wide"
+          >
             <Download className="w-3.5 h-3.5 text-slate-400" />
             Export Report
           </button>
-          <button className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "add" })}
+            className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide"
+          >
             <Plus className="w-3.5 h-3.5" />
             Add New Asset
           </button>
@@ -116,10 +138,18 @@ export function InventoryHub() {
             <div className="p-7 border-b border-border-subtle/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-[16px] font-bold text-slate-900">Equipment Directory</h2>
               <div className="flex items-center gap-3">
-                <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: "filter" })}
+                  className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+                >
                   <Filter className="w-4 h-4" />
                 </button>
-                <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: "directory-actions" })}
+                  className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
               </div>
@@ -138,7 +168,11 @@ export function InventoryHub() {
                 </thead>
                 <tbody className="divide-y divide-border-subtle/50 text-[13px]">
                   {mockEquipment.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                    <tr
+                      key={item.id}
+                      onClick={() => setModal({ type: "asset", payload: item })}
+                      className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                    >
                       <td className="p-5 pl-7 font-bold text-brand-blue">{item.id}</td>
                       <td className="p-5">
                         <div className="flex items-center gap-3">
@@ -195,7 +229,11 @@ export function InventoryHub() {
               <p className="text-[13px] text-white/70 leading-relaxed mb-6">
                 Quickly loan equipment or update status by scanning the asset's QR code.
               </p>
-              <button className="w-full flex items-center justify-center gap-2 bg-white text-brand-blue px-4 py-3 rounded-xl font-bold hover:bg-white/90 transition-colors shadow-soft text-[13px]">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "scanner" })}
+                className="w-full flex items-center justify-center gap-2 bg-white text-brand-blue px-4 py-3 rounded-xl font-bold hover:bg-white/90 transition-colors shadow-soft text-[13px]"
+              >
                 <Camera className="w-4 h-4" />
                 Launch Scanner
               </button>
@@ -242,14 +280,22 @@ export function InventoryHub() {
               </div>
             </div>
             <div className="p-4 border-t border-border-subtle/50">
-              <button className="w-full text-center text-[13px] font-bold text-brand-blue hover:text-brand-blue-hover transition-colors py-2">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "activity" })}
+                className="w-full text-center text-[13px] font-bold text-brand-blue hover:text-brand-blue-hover transition-colors py-2"
+              >
                 View All Activity
               </button>
             </div>
           </div>
 
           {/* Report Damaged Asset */}
-          <div className="bg-surface-card p-6 rounded-[24px] border border-dashed border-border-subtle shadow-sm hover:shadow-soft transition-shadow group cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "damage" })}
+            className="w-full text-left bg-surface-card p-6 rounded-[24px] border border-dashed border-border-subtle shadow-sm hover:shadow-soft transition-shadow group cursor-pointer"
+          >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-slate-100 transition-colors">
                 <AlertTriangle className="w-4 h-4" />
@@ -262,9 +308,215 @@ export function InventoryHub() {
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
+      <InventoryModal modal={modal} onClose={closeModal} />
     </div>
+  );
+}
+
+function InventoryModal({ modal, onClose }) {
+  if (!modal) return null;
+
+  const footer = (
+    <>
+      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+      <PrimaryButton onClick={onClose}>Save</PrimaryButton>
+    </>
+  );
+
+  if (modal.type === "asset") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.payload.name}
+        description={`${modal.payload.id} | ${modal.payload.category}`}
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Close</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Update status</PrimaryButton>
+          </>
+        }
+      >
+        <div className="flex gap-4 rounded-2xl border border-border-subtle/50 bg-slate-50 p-4">
+          <img
+            src={modal.payload.image}
+            alt={modal.payload.name}
+            className="h-20 w-20 rounded-2xl object-cover"
+          />
+          <div className="text-[13px]">
+            <p className="font-bold text-slate-900">{modal.payload.status}</p>
+            <p className="mt-1 text-slate-500">{modal.payload.condition}</p>
+            <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Placeholder detail view
+            </p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "add") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add New Asset"
+        description="Register equipment for tracking, loans, and maintenance."
+        footer={footer}
+        size="lg"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Asset name">
+            <TextInput placeholder="Equipment name" />
+          </Field>
+          <Field label="QR ID">
+            <TextInput placeholder="#ADNU-XX-000" />
+          </Field>
+          <Field label="Category">
+            <SelectInput defaultValue="Basketball">
+              <option>Basketball</option>
+              <option>Volleyball</option>
+              <option>Cardio</option>
+              <option>Soccer</option>
+            </SelectInput>
+          </Field>
+          <Field label="Condition">
+            <SelectInput defaultValue="Excellent">
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Requires Repair</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "filter") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Filter Equipment"
+        description="Focus the directory by category, status, or condition."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Reset</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Apply filters</PrimaryButton>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Category">
+            <SelectInput defaultValue="All">
+              <option>All</option>
+              <option>Basketball</option>
+              <option>Volleyball</option>
+              <option>Cardio</option>
+            </SelectInput>
+          </Field>
+          <Field label="Status">
+            <SelectInput defaultValue="Any">
+              <option>Any</option>
+              <option>Available</option>
+              <option>In Use</option>
+              <option>Maintenance</option>
+            </SelectInput>
+          </Field>
+          <Field label="Condition">
+            <SelectInput defaultValue="Any">
+              <option>Any</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Requires Repair</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "damage") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Report Damaged Asset"
+        description="Create a maintenance intake for damaged or unsafe equipment."
+        footer={footer}
+      >
+        <div className="space-y-4">
+          <Field label="Asset ID or name">
+            <TextInput placeholder="#ADNU-TM-011" />
+          </Field>
+          <Field label="Damage summary">
+            <TextArea placeholder="Describe the issue and where the asset is located." />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "scanner") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Scanner Ready"
+        description="Camera access can be connected when device scanning is available."
+        footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
+      >
+        <FeedbackPanel tone="info" title="QR workflow placeholder">
+          This modal will become the check-in/check-out scanner entry point.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "activity") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Activity Feed"
+        description="Recent inventory and maintenance events."
+        footer={<PrimaryButton onClick={onClose}>Close</PrimaryButton>}
+      >
+        <div className="space-y-3 text-[13px] text-slate-600">
+          <p className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-800">
+            Coach Arnaiz checked out 12 volleyballs.
+          </p>
+          <p className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-800">
+            Team Alpha returned 5 soccer med-kits.
+          </p>
+          <p className="rounded-2xl bg-red-50 p-4 font-semibold text-red-700">
+            Treadmill #011 maintenance is overdue.
+          </p>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={modal.type === "export" ? "Export Inventory Report" : "Directory Actions"}
+      description="Choose how to continue with inventory data."
+      footer={
+        <>
+          <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+          <PrimaryButton onClick={onClose}>Continue</PrimaryButton>
+        </>
+      }
+    >
+      <FeedbackPanel tone="info" title="Ready for integration">
+        Export, bulk update, and archive actions are represented here so backend
+        handlers can attach cleanly.
+      </FeedbackPanel>
+    </Modal>
   );
 }

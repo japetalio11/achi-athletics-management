@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ShieldCheck,
   Database,
@@ -8,6 +9,16 @@ import {
   MoreVertical,
   PencilLine,
 } from "lucide-react";
+import {
+  Field,
+  FeedbackPanel,
+  Modal,
+  PrimaryButton,
+  SecondaryButton,
+  SelectInput,
+  TextArea,
+  TextInput,
+} from "../../components/ui/Modal";
 
 const users = [
   {
@@ -61,6 +72,9 @@ const statusStyles = {
 };
 
 export function SettingsView() {
+  const [modal, setModal] = useState(null);
+  const closeModal = () => setModal(null);
+
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 items-start">
@@ -104,7 +118,11 @@ export function SettingsView() {
             </div>
           </div>
 
-          <button className="w-full mt-6 flex items-center justify-center gap-2 bg-brand-blue text-white px-4 py-3 rounded-xl font-semibold hover:bg-brand-blue-hover transition-colors shadow-soft text-[13px]">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "organization" })}
+            className="w-full mt-6 flex items-center justify-center gap-2 bg-brand-blue text-white px-4 py-3 rounded-xl font-semibold hover:bg-brand-blue-hover transition-colors shadow-soft text-[13px]"
+          >
             <PencilLine className="w-4 h-4" />
             Edit Organization Profile
           </button>
@@ -120,7 +138,11 @@ export function SettingsView() {
                 Configure access levels and monitor staff activity
               </p>
             </div>
-            <button className="inline-flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-xl font-semibold text-[13px] shadow-soft hover:bg-brand-blue-hover transition-colors">
+            <button
+              type="button"
+              onClick={() => setModal({ type: "user" })}
+              className="inline-flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-xl font-semibold text-[13px] shadow-soft hover:bg-brand-blue-hover transition-colors"
+            >
               <UserPlus className="w-4 h-4" />
               Add User
             </button>
@@ -182,7 +204,11 @@ export function SettingsView() {
                     </td>
                     <td className="p-4 text-slate-600">{user.lastLogin}</td>
                     <td className="p-4 pr-6 text-right">
-                      <button className="p-1.5 text-slate-400 hover:text-brand-blue transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => setModal({ type: "user-action", payload: user })}
+                        className="p-1.5 text-slate-400 hover:text-brand-blue transition-colors"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
@@ -229,7 +255,12 @@ export function SettingsView() {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" defaultChecked className="sr-only peer" />
+              <input
+                type="checkbox"
+                defaultChecked
+                onChange={() => setModal({ type: "preference", payload: "Email Alerts" })}
+                className="sr-only peer"
+              />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-brand-blue transition-colors"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
             </label>
@@ -250,7 +281,11 @@ export function SettingsView() {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" />
+              <input
+                type="checkbox"
+                onChange={() => setModal({ type: "preference", payload: "SMS Notifications" })}
+                className="sr-only peer"
+              />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-brand-blue transition-colors"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
             </label>
@@ -271,7 +306,12 @@ export function SettingsView() {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" defaultChecked className="sr-only peer" />
+              <input
+                type="checkbox"
+                defaultChecked
+                onChange={() => setModal({ type: "preference", payload: "System Broadcasts" })}
+                className="sr-only peer"
+              />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-brand-blue transition-colors"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
             </label>
@@ -293,7 +333,11 @@ export function SettingsView() {
               </p>
             </div>
           </div>
-          <button className="inline-flex items-center gap-2 text-brand-blue font-semibold text-[13px] hover:text-brand-blue-hover transition-colors">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "security" })}
+            className="inline-flex items-center gap-2 text-brand-blue font-semibold text-[13px] hover:text-brand-blue-hover transition-colors"
+          >
             Configure Security
             <span aria-hidden>→</span>
           </button>
@@ -314,12 +358,181 @@ export function SettingsView() {
               </p>
             </div>
           </div>
-          <button className="inline-flex items-center gap-2 text-brand-blue font-semibold text-[13px] hover:text-brand-blue-hover transition-colors">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "backup" })}
+            className="inline-flex items-center gap-2 text-brand-blue font-semibold text-[13px] hover:text-brand-blue-hover transition-colors"
+          >
             Export Data
             <span aria-hidden>→</span>
           </button>
         </div>
       </div>
+      <SettingsModal modal={modal} onClose={closeModal} />
     </div>
+  );
+}
+
+function SettingsModal({ modal, onClose }) {
+  if (!modal) return null;
+
+  const saveFooter = (
+    <>
+      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+      <PrimaryButton onClick={onClose}>Save changes</PrimaryButton>
+    </>
+  );
+
+  if (modal.type === "organization") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Edit Organization Profile"
+        description="Update institution details shown across the athletics hub."
+        footer={saveFooter}
+        size="lg"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Organization name">
+            <TextInput defaultValue="Ateneo de Naga University" />
+          </Field>
+          <Field label="Department domain">
+            <TextInput defaultValue="athletics.adnu.edu.ph" />
+          </Field>
+          <Field label="Location">
+            <TextInput defaultValue="Naga City, Camarines Sur" />
+          </Field>
+          <Field label="Admin contact">
+            <TextInput defaultValue="admin@adnu.edu.ph" />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "user") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add User"
+        description="Invite a staff member and assign an access role."
+        footer={saveFooter}
+      >
+        <div className="space-y-4">
+          <Field label="Full name">
+            <TextInput placeholder="Staff member name" />
+          </Field>
+          <Field label="Email">
+            <TextInput type="email" placeholder="name@adnu.edu.ph" />
+          </Field>
+          <Field label="Role">
+            <SelectInput defaultValue="Coach">
+              <option>Admin</option>
+              <option>Coach</option>
+              <option>Trainer</option>
+              <option>Scout</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "user-action") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="User Actions"
+        description={`Manage access for ${modal.payload.name}.`}
+        footer={saveFooter}
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button type="button" className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:bg-brand-blue-light">
+            Edit role
+          </button>
+          <button type="button" className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:bg-brand-blue-light">
+            Reset password
+          </button>
+          <button type="button" className="rounded-2xl border border-red-100 bg-red-50 p-4 text-left text-[13px] font-bold text-red-700 hover:bg-red-100">
+            Deactivate
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "security") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Security Settings"
+        description="Configure account protection policies."
+        footer={saveFooter}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Password expiry">
+            <SelectInput defaultValue="90 days">
+              <option>30 days</option>
+              <option>60 days</option>
+              <option>90 days</option>
+              <option>Never</option>
+            </SelectInput>
+          </Field>
+          <Field label="Two-factor auth">
+            <SelectInput defaultValue="Required for admins">
+              <option>Required for admins</option>
+              <option>Required for all staff</option>
+              <option>Optional</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "backup") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Export Data"
+        description="Prepare athlete, facility, and inventory records for audit use."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Start export</PrimaryButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FeedbackPanel tone="warning" title="Sensitive data">
+            Exports should be audited and access-controlled once backend storage
+            is connected.
+          </FeedbackPanel>
+          <Field label="Export notes">
+            <TextArea placeholder="Reason for export or audit reference..." />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Preference Updated"
+      description={`${modal.payload} has been changed locally.`}
+      footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
+    >
+      <FeedbackPanel tone="success" title="Setting captured">
+        This confirmation is ready for persistence and toast replacement when a
+        settings API is available.
+      </FeedbackPanel>
+    </Modal>
   );
 }

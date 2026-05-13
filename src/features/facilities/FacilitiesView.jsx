@@ -11,6 +11,14 @@ import {
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { ChevronLeft, ChevronRight, Plus, MoreVertical } from "lucide-react";
+import {
+  Field,
+  FeedbackPanel,
+  Modal,
+  PrimaryButton,
+  SecondaryButton,
+  TextArea,
+} from "../../components/ui/Modal";
 
 const locales = {
   "en-US": enUS,
@@ -62,6 +70,7 @@ const facilityEvents = [
 
 export function FacilitiesView() {
   const [currentDate, setCurrentDate] = useState(defaultDate);
+  const [modal, setModal] = useState(null);
   const events = useMemo(() => facilityEvents, []);
 
   const handlePrev = () => setCurrentDate((prev) => subMonths(prev, 1));
@@ -122,6 +131,7 @@ export function FacilitiesView() {
               onNavigate={setCurrentDate}
               toolbar={false}
               popup
+              onSelectEvent={(event) => setModal({ type: "event", payload: event })}
               className="adnu-calendar"
               style={{ minHeight: 720 }}
               eventPropGetter={eventPropGetter}
@@ -236,7 +246,11 @@ export function FacilitiesView() {
                 </div>
               </div>
 
-              <button className="w-full mt-2 flex items-center justify-center gap-2 bg-brand-blue text-white px-4 py-3.5 rounded-xl font-bold hover:bg-brand-blue-hover transition-colors shadow-soft text-[13px] tracking-wide">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "booking" })}
+                className="w-full mt-2 flex items-center justify-center gap-2 bg-brand-blue text-white px-4 py-3.5 rounded-xl font-bold hover:bg-brand-blue-hover transition-colors shadow-soft text-[13px] tracking-wide"
+              >
                 <Plus className="w-4 h-4" />
                 Request Booking
               </button>
@@ -255,7 +269,11 @@ export function FacilitiesView() {
 
             <div className="p-6 space-y-4">
               <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: "approval-detail", payload: "Community Open Day" })}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 <h3 className="font-bold text-slate-900 text-[14px]">
@@ -265,17 +283,29 @@ export function FacilitiesView() {
                   Main Gym • Sept 25, 08:00 AM
                 </p>
                 <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Community Open Day", action: "Approve" } })}
+                    className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors"
+                  >
                     Approve
                   </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Community Open Day", action: "Deny" } })}
+                    className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors"
+                  >
                     Deny
                   </button>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: "approval-detail", payload: "Varsity Volleyball" })}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 <h3 className="font-bold text-slate-900 text-[14px]">
@@ -285,17 +315,29 @@ export function FacilitiesView() {
                   Main Gym • Sept 28, 04:00 PM
                 </p>
                 <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Varsity Volleyball", action: "Approve" } })}
+                    className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors"
+                  >
                     Approve
                   </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Varsity Volleyball", action: "Deny" } })}
+                    className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors"
+                  >
                     Deny
                   </button>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: "approval-detail", payload: "Annual Inspection" })}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 <h3 className="font-bold text-slate-900 text-[14px]">
@@ -305,10 +347,18 @@ export function FacilitiesView() {
                   All Facilities • Oct 01, 09:00 AM
                 </p>
                 <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Annual Inspection", action: "Approve" } })}
+                    className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors"
+                  >
                     Approve
                   </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "approval", payload: { name: "Annual Inspection", action: "Deny" } })}
+                    className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors"
+                  >
                     Deny
                   </button>
                 </div>
@@ -317,6 +367,90 @@ export function FacilitiesView() {
           </div>
         </div>
       </div>
+      <FacilitiesModal modal={modal} onClose={() => setModal(null)} />
     </div>
+  );
+}
+
+function FacilitiesModal({ modal, onClose }) {
+  if (!modal) return null;
+
+  if (modal.type === "event") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.payload.title}
+        description="Calendar event details."
+        footer={<PrimaryButton onClick={onClose}>Close</PrimaryButton>}
+      >
+        <FeedbackPanel tone="info" title="Scheduled event">
+          This event is categorized as {modal.payload.category}. Full roster,
+          facility setup, and staffing data can connect here later.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "booking") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Confirm Booking Request"
+        description="Submit the quick reservation for director review."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Submit request</PrimaryButton>
+          </>
+        }
+      >
+        <FeedbackPanel tone="success" title="Request is ready">
+          Main Gymnasium booking details will be submitted in placeholder mode.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "approval-detail") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.payload}
+        description="Review requester notes and facility requirements."
+        footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
+      >
+        <Field label="Approver notes">
+          <TextArea placeholder="Add setup, staffing, or compliance notes..." />
+        </Field>
+      </Modal>
+    );
+  }
+
+  const isDeny = modal.payload.action === "Deny";
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${modal.payload.action} Request`}
+      description={`${modal.payload.name} will be ${
+        isDeny ? "declined" : "approved"
+      } after confirmation.`}
+      footer={
+        <>
+          <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+          <PrimaryButton tone={isDeny ? "danger" : "brand"} onClick={onClose}>
+            Confirm {modal.payload.action.toLowerCase()}
+          </PrimaryButton>
+        </>
+      }
+    >
+      <FeedbackPanel tone={isDeny ? "danger" : "success"} title="Confirmation required">
+        This keeps approval decisions deliberate and ready for audit logging.
+      </FeedbackPanel>
+    </Modal>
   );
 }

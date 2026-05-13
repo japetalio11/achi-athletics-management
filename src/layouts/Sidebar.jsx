@@ -69,13 +69,14 @@ export function Sidebar() {
           <HelpCircle className="w-[18px] h-[18px]" strokeWidth={2} />
           <span className="text-[13px]">Help Center</span>
         </a>
-        <a
-          href="#"
+        <button
+          type="button"
+          onClick={() => navigateTo("login")}
           className="flex items-center gap-3.5 px-4 py-2.5 rounded-lg hover:bg-red-50 hover:text-red-600 font-medium transition-all duration-200 text-slate-500"
         >
           <LogOut className="w-[18px] h-[18px]" strokeWidth={2} />
           <span className="text-[13px]">Logout</span>
-        </a>
+        </button>
       </div>
     </aside>
   );

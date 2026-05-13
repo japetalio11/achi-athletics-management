@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Calendar,
   Download,
@@ -8,8 +9,43 @@ import {
   ChevronRight,
   Map,
 } from "lucide-react";
+import {
+  Field,
+  FeedbackPanel,
+  Modal,
+  PrimaryButton,
+  SecondaryButton,
+  SelectInput,
+  TextArea,
+  TextInput,
+} from "../../components/ui/Modal";
+
+const pendingFacilityRequests = [
+  {
+    name: "Main Gym C",
+    purpose: "Varsity Practice",
+    time: "2:00 PM",
+    requester: "Basketball Coaching Staff",
+  },
+  {
+    name: "Aquatics Center",
+    purpose: "Intramural Prelims",
+    time: "4:30 PM",
+    requester: "Student Affairs Office",
+  },
+  {
+    name: "Upper Field",
+    purpose: "Football Tryouts",
+    time: "6:00 PM",
+    requester: "Football Program",
+  },
+];
 
 export function Dashboard() {
+  const [modal, setModal] = useState(null);
+
+  const closeModal = () => setModal(null);
+
   return (
     <div className="space-y-6 pb-24 relative">
       {/* Header */}
@@ -23,11 +59,19 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-surface-card border border-border-subtle/50 text-slate-600 px-4 py-2.5 rounded-full font-medium hover:bg-slate-50 transition-colors shadow-soft text-[12px] tracking-wide">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "range" })}
+            className="flex items-center gap-2 bg-surface-card border border-border-subtle/50 text-slate-600 px-4 py-2.5 rounded-full font-medium hover:bg-slate-50 transition-colors shadow-soft text-[12px] tracking-wide"
+          >
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             LAST 30 DAYS
           </button>
-          <button className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "export" })}
+            className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide"
+          >
             <Download className="w-3.5 h-3.5" />
             EXPORT REPORT
           </button>
@@ -173,59 +217,40 @@ export function Dashboard() {
           </div>
 
           <div className="flex-1 space-y-3">
-            <div className="flex items-center justify-between p-3.5 rounded-lg border border-border-subtle hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
-                  <Map className="w-4 h-4" />
+            {pendingFacilityRequests.map((request, index) => (
+              <button
+                type="button"
+                key={request.name}
+                onClick={() => setModal({ type: "facility", payload: request })}
+                className="w-full flex items-center justify-between p-3.5 rounded-lg border border-border-subtle hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
+                    {index === 1 ? (
+                      <span className="font-black text-lg leading-none">~</span>
+                    ) : (
+                      <Map className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[13px] text-slate-900">
+                      {request.name}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {request.purpose} | {request.time}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-[13px] text-slate-900">
-                    Main Gym C
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Varsity Practice • 2:00 PM
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-lg border border-border-subtle hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
-                  <span className="font-black text-lg leading-none">≈</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-[13px] text-slate-900">
-                    Aquatics Center
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Intramural Prelims • 4:30 PM
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-lg border border-border-subtle hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
-                  <Map className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-[13px] text-slate-900">
-                    Upper Field
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Football Tryouts • 6:00 PM
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+            ))}
           </div>
 
-          <button className="w-full mt-5 py-2.5 text-[13px] font-semibold text-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors">
+          <button
+            type="button"
+            onClick={() => setModal({ type: "facility-list" })}
+            className="w-full mt-5 py-2.5 text-[13px] font-semibold text-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors"
+          >
             VIEW ALL REQUESTS
           </button>
         </div>
@@ -290,7 +315,20 @@ export function Dashboard() {
                   </span>
                 </td>
                 <td className="p-5 pr-7 text-right">
-                  <button className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModal({
+                        type: "alert",
+                        payload: {
+                          athlete: "Marco Santino",
+                          action: "Notify Coach",
+                          issue: "Academic Probation",
+                        },
+                      })
+                    }
+                    className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors"
+                  >
                     Notify Coach
                   </button>
                 </td>
@@ -319,7 +357,20 @@ export function Dashboard() {
                   </span>
                 </td>
                 <td className="p-5 pr-7 text-right">
-                  <button className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModal({
+                        type: "alert",
+                        payload: {
+                          athlete: "Elena Reyes",
+                          action: "Update File",
+                          issue: "Medical Waiver Expired",
+                        },
+                      })
+                    }
+                    className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors"
+                  >
                     Update File
                   </button>
                 </td>
@@ -348,7 +399,20 @@ export function Dashboard() {
                   </span>
                 </td>
                 <td className="p-5 pr-7 text-right">
-                  <button className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModal({
+                        type: "alert",
+                        payload: {
+                          athlete: "Kevin Chan",
+                          action: "Review Case",
+                          issue: "Pending Evaluation",
+                        },
+                      })
+                    }
+                    className="font-semibold text-brand-blue hover:text-brand-blue-hover transition-colors"
+                  >
                     Review Case
                   </button>
                 </td>
@@ -359,9 +423,178 @@ export function Dashboard() {
       </div>
 
       {/* Floating Action Button */}
-      <button className="fixed bottom-8 right-8 w-14 h-14 bg-brand-blue hover:bg-brand-blue-hover text-white rounded-full flex items-center justify-center shadow-float transition-all hover:scale-105 active:scale-95 z-50">
+      <button
+        type="button"
+        onClick={() => setModal({ type: "quick-add" })}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-brand-blue hover:bg-brand-blue-hover text-white rounded-full flex items-center justify-center shadow-float transition-all hover:scale-105 active:scale-95 z-50"
+      >
         <Plus className="w-6 h-6" />
       </button>
+
+      <DashboardModal modal={modal} onClose={closeModal} />
     </div>
+  );
+}
+
+function DashboardModal({ modal, onClose }) {
+  if (!modal) return null;
+
+  const submitFooter = (
+    <>
+      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+      <PrimaryButton onClick={onClose}>
+        {modal.type === "export" ? "Generate export" : "Save changes"}
+      </PrimaryButton>
+    </>
+  );
+
+  if (modal.type === "range") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Dashboard Date Range"
+        description="Adjust which operating window is reflected by the dashboard metrics."
+        footer={submitFooter}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Start date">
+            <TextInput type="date" defaultValue="2024-09-01" />
+          </Field>
+          <Field label="End date">
+            <TextInput type="date" defaultValue="2024-09-30" />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "export") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Export Executive Report"
+        description="Choose a report format. This is ready for backend export wiring."
+        footer={submitFooter}
+      >
+        <div className="space-y-4">
+          <FeedbackPanel tone="info" title="Report package">
+            KPI cards, eligibility alerts, facility requests, and equipment
+            exceptions will be included.
+          </FeedbackPanel>
+          <Field label="Format">
+            <SelectInput defaultValue="PDF">
+              <option>PDF</option>
+              <option>CSV</option>
+              <option>XLSX</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "facility" || modal.type === "facility-list") {
+    const requests =
+      modal.type === "facility-list"
+        ? pendingFacilityRequests
+        : [modal.payload];
+
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={
+          modal.type === "facility-list"
+            ? "Pending Facility Requests"
+            : modal.payload.name
+        }
+        description="Review booking details before moving the request forward."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Close</SecondaryButton>
+            <PrimaryButton onClick={onClose}>Mark reviewed</PrimaryButton>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {requests.map((request) => (
+            <div
+              key={request.name}
+              className="rounded-2xl border border-border-subtle/50 bg-slate-50/70 p-4"
+            >
+              <h3 className="text-[14px] font-bold text-slate-900">
+                {request.name}
+              </h3>
+              <p className="mt-1 text-[13px] text-slate-600">
+                {request.purpose} at {request.time}
+              </p>
+              <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Requested by
+              </p>
+              <p className="text-[13px] font-semibold text-slate-800">
+                {request.requester}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "alert") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.payload.action}
+        description={`Create a follow-up for ${modal.payload.athlete}.`}
+        footer={submitFooter}
+      >
+        <div className="space-y-4">
+          <FeedbackPanel tone="warning" title={modal.payload.issue}>
+            This placeholder action can later create coach notifications,
+            document updates, or review tasks.
+          </FeedbackPanel>
+          <Field label="Internal note">
+            <TextArea placeholder="Add context for the coach or compliance file..." />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Quick Add"
+      description="Create a new operational item from the dashboard."
+      footer={submitFooter}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Item type">
+          <SelectInput defaultValue="Athlete">
+            <option>Athlete</option>
+            <option>Asset</option>
+            <option>Facility booking</option>
+            <option>Staff task</option>
+          </SelectInput>
+        </Field>
+        <Field label="Priority">
+          <SelectInput defaultValue="Normal">
+            <option>Normal</option>
+            <option>High</option>
+            <option>Critical</option>
+          </SelectInput>
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Summary">
+            <TextInput placeholder="Briefly describe the new item" />
+          </Field>
+        </div>
+      </div>
+    </Modal>
   );
 }

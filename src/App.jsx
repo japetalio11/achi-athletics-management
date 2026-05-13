@@ -4,13 +4,18 @@ import { AthletesView } from "./features/athletes/AthletesView";
 import { InventoryHub } from "./features/inventory/InventoryHub";
 import { FacilitiesView } from "./features/facilities/FacilitiesView";
 import { SettingsView } from "./features/settings/SettingsView";
+import { AuthView } from "./features/auth/AuthPages";
 import {
   NavigationProvider,
   useNavigation,
 } from "./contexts/NavigationContext";
 
 function AppContent() {
-  const { currentView } = useNavigation();
+  const { currentView, isAuthView } = useNavigation();
+
+  if (isAuthView) {
+    return <AuthView view={currentView} />;
+  }
 
   return (
     <DashboardLayout>
