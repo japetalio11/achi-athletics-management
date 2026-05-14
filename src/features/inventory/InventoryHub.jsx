@@ -1,522 +1,618 @@
-import { useState } from "react";
-import { Download, Plus, ClipboardList, ArrowUpRight, Wrench, QrCode, Camera, AlertTriangle, Filter, MoreVertical, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FeedbackPanel } from "../../components/ui/Modal";
+import { useNavigation } from "../../contexts/NavigationContext";
 import {
-  Field,
-  FeedbackPanel,
-  Modal,
-  PrimaryButton,
-  SecondaryButton,
-  SelectInput,
-  TextArea,
-  TextInput,
-} from "../../components/ui/Modal";
-
-const mockEquipment = [
-  {
-    id: "#ADNU-VB-042",
-    name: "Mikasa V200W Pro",
-    category: "Volleyball",
-    status: "Available",
-    condition: "Excellent",
-    image: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=100&h=100&fit=crop&q=80"
-  },
-  {
-    id: "#ADNU-TM-011",
-    name: "Commercial Treadmill X8",
-    category: "Cardio",
-    status: "In Use",
-    condition: "Good",
-    image: "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=100&h=100&fit=crop&q=80"
-  },
-  {
-    id: "#ADNU-BB-098",
-    name: "Wilson Evolution Basketball",
-    category: "Basketball",
-    status: "Maintenance",
-    condition: "Requires Repair",
-    image: "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=100&h=100&fit=crop&q=80"
-  },
-  {
-    id: "#ADNU-SC-212",
-    name: "Adidas FIFA Pro Match Ball",
-    category: "Soccer",
-    status: "Available",
-    condition: "Excellent",
-    image: "https://images.unsplash.com/photo-1614632537423-1e6c2e7e0aab?w=100&h=100&fit=crop&q=80"
-  }
-];
+  createInventoryItemFromForm,
+  inventoryItemToForm,
+  inventoryPeople,
+  mergeInventoryItemForm,
+  mockInventoryItems,
+} from "./inventoryMockData";
+import { InventoryItemInfoPage } from "./InventoryItemInfoPage";
+import { InventoryList } from "./InventoryList";
+import { InventoryModals } from "./InventoryModals";
+import { defaultModalPayload } from "./inventoryModalPayload";
+import { deriveInventoryStatus, emptyInventoryForm, formatDate, todayIso } from "./inventoryTypes";
 
 export function InventoryHub() {
+  const {
+    selectedInventoryItem,
+    setSelectedInventoryItem,
+    selectInventoryItem,
+    clearSelectedInventoryItem,
+    setSelectedAthlete,
+    setSelectedCoach,
+    navigateTo,
+  } = useNavigation();
+  const [items, setItems] = useState(mockInventoryItems);
   const [modal, setModal] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+
+  useEffect(() => {
+    if (!feedback) return undefined;
+
+    const timer = window.setTimeout(() => setFeedback(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  const activeItem = useMemo(() => {
+    if (!selectedInventoryItem?.id) return null;
+    return items.find((item) => item.id === selectedInventoryItem.id) ?? null;
+  }, [items, selectedInventoryItem]);
+
+  const showFeedback = (tone, title, message) => {
+    setFeedback({ tone, title, message });
+  };
+
+  const openModal = (payload) => {
+    if (payload.type === "item-form") {
+      setModal({
+        ...payload,
+        values:
+          payload.mode === "edit" && payload.item
+            ? inventoryItemToForm(payload.item)
+            : { ...emptyInventoryForm },
+        errors: {},
+      });
+      return;
+    }
+
+    setModal(defaultModalPayload(payload, items));
+  };
+
   const closeModal = () => setModal(null);
 
+  const selectItem = (item, initialTab = "overview") => {
+    selectInventoryItem(item, initialTab);
+  };
+
+  const updateItem = (itemId, updater, feedbackPayload) => {
+    let updatedItem = null;
+
+    setItems((current) =>
+      current.map((item) => {
+        if (item.id !== itemId) return item;
+
+        updatedItem = typeof updater === "function" ? updater(item) : { ...item, ...updater };
+        return {
+          ...updatedItem,
+          updatedAt: todayIso(),
+        };
+      }),
+    );
+
+    if (updatedItem && selectedInventoryItem?.id === itemId) {
+      setSelectedInventoryItem({
+        id: updatedItem.id,
+        name: updatedItem.name,
+        initialTab: selectedInventoryItem.initialTab,
+      });
+    }
+
+    if (feedbackPayload) {
+      showFeedback(feedbackPayload.tone ?? "success", feedbackPayload.title, feedbackPayload.message);
+    }
+  };
+
+  const saveItem = (payload) => {
+    if (payload.mode === "add") {
+      const newItem = createInventoryItemFromForm(payload.values);
+      setItems((current) => [newItem, ...current]);
+      selectItem(newItem);
+      showFeedback("success", "Inventory item added", `${newItem.name} was added to local inventory.`);
+    } else {
+      updateItem(
+        payload.item.id,
+        (item) => appendHistory(mergeInventoryItemForm(item, payload.values), "Item details updated locally."),
+        {
+          title: "Inventory item updated",
+          message: `${payload.values.name} was updated in local state.`,
+        },
+      );
+    }
+    closeModal();
+  };
+
+  const assignItem = (itemId, values) => {
+    const person = inventoryPeople.find((candidate) => candidate.id === values.personId);
+    const quantity = Number(values.quantity);
+
+    updateItem(
+      itemId,
+      (item) => {
+        const nextAvailable = Math.max(0, item.availableQuantity - quantity);
+        const nextItem = {
+          ...item,
+          availableQuantity: nextAvailable,
+          assignments: [
+            {
+              id: `ASN-${Date.now()}`,
+              assigneeId: person.id,
+              assigneeName: person.name,
+              assigneeType: person.type,
+              sport: person.sport,
+              quantity,
+              assignedDate: values.assignedDate,
+              dueDate: values.dueDate,
+              returnDate: "",
+              status: "Active",
+              conditionOut: values.conditionOut,
+              conditionIn: "",
+              notes: values.notes.trim(),
+            },
+            ...item.assignments,
+          ],
+          stockMovements: [
+            {
+              id: `STK-${Date.now()}`,
+              date: values.assignedDate,
+              type: "Assigned",
+              quantity: -quantity,
+              balance: nextAvailable,
+              note: `Issued to ${person.name}`,
+            },
+            ...item.stockMovements,
+          ],
+        };
+
+        return appendHistory(
+          { ...nextItem, status: deriveInventoryStatus(nextItem) },
+          `${quantity} unit(s) assigned to ${person.name}.`,
+        );
+      },
+      {
+        title: "Item assigned",
+        message: `${quantity} unit(s) assigned to ${person.name}.`,
+      },
+    );
+    closeModal();
+  };
+
+  const returnItem = (itemId, assignmentId, values) => {
+    const quantity = Number(values.quantity);
+
+    updateItem(
+      itemId,
+      (item) => {
+        const assignment = item.assignments.find((entry) => entry.id === assignmentId);
+        const fullyReturned = quantity >= assignment.quantity;
+        const returnedRecord = {
+          ...assignment,
+          id: fullyReturned ? assignment.id : `ASN-RET-${Date.now()}`,
+          quantity,
+          returnDate: values.returnDate,
+          status: values.returnStatus,
+          conditionIn: values.conditionIn,
+          notes: values.notes.trim() || assignment.notes,
+        };
+        const nextAssignments = item.assignments.flatMap((entry) => {
+          if (entry.id !== assignmentId) return [entry];
+          if (fullyReturned) return [returnedRecord];
+          return [
+            { ...entry, quantity: entry.quantity - quantity, notes: `${entry.notes} Partial return recorded.`.trim() },
+            returnedRecord,
+          ];
+        });
+        const nextAvailable = Math.min(item.totalQuantity, item.availableQuantity + quantity);
+        const conditionNeedsAttention =
+          values.conditionIn === "Damaged" || values.returnStatus.includes("Damaged");
+        const inspectionNeeded = values.conditionIn === "Needs Inspection" || values.returnStatus.includes("Inspection");
+        const nextBase = {
+          ...item,
+          availableQuantity: nextAvailable,
+          condition: conditionNeedsAttention ? "Damaged" : inspectionNeeded ? "Needs Inspection" : item.condition,
+          assignments: nextAssignments,
+          stockMovements: [
+            {
+              id: `STK-${Date.now()}`,
+              date: values.returnDate,
+              type: "Returned",
+              quantity,
+              balance: nextAvailable,
+              note: `Returned by ${assignment.assigneeName}`,
+            },
+            ...item.stockMovements,
+          ],
+        };
+        const nextStatus = conditionNeedsAttention
+          ? "Damaged"
+          : inspectionNeeded
+            ? "Needs Inspection"
+            : deriveInventoryStatus(nextBase);
+
+        return appendHistory(
+          { ...nextBase, status: nextStatus },
+          `${quantity} unit(s) returned by ${assignment.assigneeName}.`,
+        );
+      },
+      {
+        title: "Item returned",
+        message: "Availability and assignment history were updated locally.",
+      },
+    );
+    closeModal();
+  };
+
+  const extendAssignment = (itemId, assignmentId, values) => {
+    updateItem(
+      itemId,
+      (item) =>
+        appendHistory(
+          {
+            ...item,
+            assignments: item.assignments.map((assignment) =>
+              assignment.id === assignmentId
+                ? {
+                    ...assignment,
+                    dueDate: values.dueDate,
+                    notes: values.notes.trim()
+                      ? `${assignment.notes} Extension: ${values.notes.trim()}`.trim()
+                      : assignment.notes,
+                  }
+                : assignment,
+            ),
+          },
+          `Assignment due date extended to ${formatDate(values.dueDate)}.`,
+        ),
+      {
+        title: "Return date extended",
+        message: "The assignment due date was updated locally.",
+      },
+    );
+    closeModal();
+  };
+
+  const adjustStock = (itemId, values) => {
+    const quantity = Number(values.quantity);
+
+    updateItem(
+      itemId,
+      (item) => {
+        let totalQuantity = item.totalQuantity;
+        let availableQuantity = item.availableQuantity;
+        let movementQuantity = quantity;
+
+        if (values.adjustmentType === "Add stock") {
+          totalQuantity += quantity;
+          availableQuantity += quantity;
+        } else if (values.adjustmentType === "Remove stock") {
+          totalQuantity -= quantity;
+          availableQuantity -= quantity;
+          movementQuantity = -quantity;
+        } else if (values.adjustmentType === "Set available quantity") {
+          movementQuantity = quantity - item.availableQuantity;
+          availableQuantity = quantity;
+        } else if (values.adjustmentType === "Set total quantity") {
+          movementQuantity = quantity - item.totalQuantity;
+          totalQuantity = quantity;
+          availableQuantity = Math.min(availableQuantity, totalQuantity);
+        }
+
+        const nextItem = {
+          ...item,
+          totalQuantity,
+          availableQuantity,
+          stockMovements: [
+            {
+              id: `STK-${Date.now()}`,
+              date: todayIso(),
+              type: values.adjustmentType,
+              quantity: movementQuantity,
+              balance: availableQuantity,
+              note: values.reason.trim(),
+            },
+            ...item.stockMovements,
+          ],
+        };
+
+        return appendHistory(
+          { ...nextItem, status: deriveInventoryStatus(nextItem) },
+          `${values.adjustmentType}: ${values.reason.trim()}`,
+        );
+      },
+      {
+        title: "Stock adjusted",
+        message: "Stock counts and movement history were updated locally.",
+      },
+    );
+    closeModal();
+  };
+
+  const saveMaintenance = (itemId, values) => {
+    updateItem(
+      itemId,
+      (item) => {
+        const status = values.status === "Good" ? "Available" : values.status;
+        const condition = values.status === "Good" ? "Good" : values.status;
+        const nextItem = {
+          ...item,
+          status,
+          condition,
+          maintenanceRecords: [
+            {
+              id: `MNT-${Date.now()}`,
+              status: values.status,
+              dateReported: values.dateReported,
+              issue: values.issue.trim(),
+              resolution: values.resolution.trim(),
+              cost: values.cost ? Number(values.cost) : 0,
+              nextInspectionDate: values.nextInspectionDate,
+            },
+            ...item.maintenanceRecords,
+          ],
+        };
+
+        return appendHistory(nextItem, `Maintenance record added: ${values.issue.trim()}`);
+      },
+      {
+        tone: values.status === "Good" ? "success" : "warning",
+        title: "Maintenance saved",
+        message: "Maintenance status and history were updated locally.",
+      },
+    );
+    closeModal();
+  };
+
+  const saveNote = (itemId, values, noteId) => {
+    updateItem(
+      itemId,
+      (item) => {
+        const note = {
+          id: noteId ?? `NOTE-${Date.now()}`,
+          title: values.title.trim(),
+          type: values.type,
+          body: values.body.trim(),
+          author: "Athletics Staff",
+          createdAt: todayIso(),
+        };
+        const notes = noteId
+          ? item.notes.map((entry) => (entry.id === noteId ? note : entry))
+          : [note, ...item.notes];
+
+        return appendHistory(
+          { ...item, notes },
+          noteId ? `Note updated: ${note.title}` : `Note added: ${note.title}`,
+        );
+      },
+      {
+        title: noteId ? "Note updated" : "Note added",
+        message: "Inventory notes were updated locally.",
+      },
+    );
+    closeModal();
+  };
+
+  const confirmAction = (payload) => {
+    const item = payload.item;
+
+    if (payload.action === "delete") {
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      if (selectedInventoryItem?.id === item.id) {
+        clearSelectedInventoryItem();
+      }
+      showFeedback("danger", "Item deleted", `${item.name} was removed from local inventory.`);
+      closeModal();
+      return;
+    }
+
+    if (payload.action === "delete-note") {
+      updateItem(
+        item.id,
+        (currentItem) =>
+          appendHistory(
+            {
+              ...currentItem,
+              notes: currentItem.notes.filter((note) => note.id !== payload.note.id),
+            },
+            `Note deleted: ${payload.note.title}`,
+          ),
+        {
+          tone: "warning",
+          title: "Note deleted",
+          message: "The inventory note was removed locally.",
+        },
+      );
+      closeModal();
+      return;
+    }
+
+    if (payload.action === "lost-assignment" || payload.action === "damaged-assignment") {
+      const status = payload.action === "lost-assignment" ? "Lost" : "Damaged";
+      updateItem(
+        item.id,
+        (currentItem) =>
+          appendHistory(
+            {
+              ...currentItem,
+              status,
+              condition: status,
+              assignments: currentItem.assignments.map((assignment) =>
+                assignment.id === payload.assignment.id
+                  ? { ...assignment, status, conditionIn: status }
+                  : assignment,
+              ),
+            },
+            `${payload.assignment.assigneeName} assignment marked ${status.toLowerCase()}.`,
+          ),
+        {
+          tone: "danger",
+          title: `Assignment marked ${status.toLowerCase()}`,
+          message: "Assignment and item status were updated locally.",
+        },
+      );
+      closeModal();
+      return;
+    }
+
+    const statusMap = {
+      archive: { status: "Archived", condition: item.condition, archived: true, tone: "warning", title: "Item archived" },
+      retire: { status: "Retired", condition: "Retired", archived: false, tone: "warning", title: "Item retired" },
+      lost: { status: "Lost", condition: "Lost", archived: false, tone: "danger", title: "Item marked lost" },
+      damaged: { status: "Damaged", condition: "Damaged", archived: false, tone: "danger", title: "Item marked damaged" },
+      repaired: { status: "Available", condition: "Good", archived: false, tone: "success", title: "Item marked repaired" },
+      inspection: { status: "Needs Inspection", condition: "Needs Inspection", archived: false, tone: "warning", title: "Inspection flagged" },
+    };
+
+    const patch = statusMap[payload.action];
+    if (!patch) return;
+
+    updateItem(
+      item.id,
+      (currentItem) =>
+        appendHistory(
+          {
+            ...currentItem,
+            status: patch.status,
+            condition: patch.condition,
+            archived: patch.archived,
+          },
+          `${patch.title}.`,
+        ),
+      {
+        tone: patch.tone,
+        title: patch.title,
+        message: `${item.name} was updated locally.`,
+      },
+    );
+    closeModal();
+  };
+
+  const duplicateItem = (item) => {
+    const newId = `INV-${String(Date.now()).slice(-6)}`;
+    const newItem = {
+      ...item,
+      id: newId,
+      sku: `${item.sku}-COPY`,
+      name: `${item.name} Copy`,
+      availableQuantity: item.totalQuantity,
+      assignments: [],
+      maintenanceRecords: [],
+      stockMovements: [
+        {
+          id: `STK-${Date.now()}`,
+          date: todayIso(),
+          type: "Duplicated",
+          quantity: item.totalQuantity,
+          balance: item.totalQuantity,
+          note: `Duplicated from ${item.sku}`,
+        },
+      ],
+      notes: [],
+      history: [`${new Date().toLocaleDateString()} - Duplicated from ${item.sku}.`],
+      status: "Available",
+      condition: item.condition === "Lost" || item.condition === "Retired" ? "Good" : item.condition,
+      archived: false,
+      updatedAt: todayIso(),
+    };
+    setItems((current) => [newItem, ...current]);
+    selectItem(newItem);
+    showFeedback("success", "Item duplicated", `${newItem.name} was created locally.`);
+  };
+
+  const exportCsv = () => {
+    const headers = ["SKU", "Name", "Category", "Sport", "Available", "Total", "Status", "Condition", "Location"];
+    const rows = items.map((item) =>
+      [
+        item.sku,
+        item.name,
+        item.category,
+        item.sport,
+        item.availableQuantity,
+        item.totalQuantity,
+        item.status,
+        item.condition,
+        item.location,
+      ]
+        .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+        .join(","),
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `adnu-inventory-${todayIso()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showFeedback("success", "Inventory exported", "A CSV report was generated from local frontend state.");
+    closeModal();
+  };
+
+  const openPersonProfile = (assignment) => {
+    if (assignment.assigneeType === "Athlete") {
+      setSelectedAthlete({ id: assignment.assigneeId, name: assignment.assigneeName, initialTab: "assets" });
+      navigateTo("athletes");
+      return;
+    }
+    if (assignment.assigneeType === "Coach") {
+      setSelectedCoach({ id: assignment.assigneeId, name: assignment.assigneeName, initialTab: "overview" });
+      navigateTo("coaches");
+      return;
+    }
+    showFeedback("info", "Staff profile unavailable", "Staff directory routing can be connected when that module exists.");
+  };
+
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Asset Inventory Hub</h1>
-          <p className="text-[13px] text-slate-500 mt-1">Manage, track, and maintain the varsity athletic equipment ecosystem.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setModal({ type: "export" })}
-            className="flex items-center gap-2 bg-surface-card border border-border-subtle/50 text-slate-600 px-4 py-2.5 rounded-full font-medium hover:bg-slate-50 transition-colors shadow-soft text-[12px] tracking-wide"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            Export Report
-          </button>
-          <button
-            type="button"
-            onClick={() => setModal({ type: "add" })}
-            className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2.5 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add New Asset
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {feedback && (
+        <FeedbackPanel tone={feedback.tone} title={feedback.title}>
+          {feedback.message}
+        </FeedbackPanel>
+      )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total Assets */}
-        <div className="bg-surface-card p-7 rounded-[24px] border border-border-subtle/40 shadow-soft flex flex-col justify-between hover:shadow-float transition-shadow duration-300">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-9 h-9 rounded-full bg-brand-blue-light text-brand-blue flex items-center justify-center">
-                <ClipboardList className="w-4 h-4" />
-              </div>
-              <p className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Total Assets</p>
-            </div>
-            <div className="flex items-end justify-between mt-6">
-              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tighter">2,481</h3>
-              <span className="text-[12px] font-semibold text-brand-blue mb-1">+12 this month</span>
-            </div>
-          </div>
-        </div>
+      {selectedInventoryItem ? (
+        <InventoryItemInfoPage
+          item={activeItem}
+          initialTab={selectedInventoryItem.initialTab}
+          onBack={clearSelectedInventoryItem}
+          onSelectTab={(tabId) =>
+            activeItem &&
+            setSelectedInventoryItem({
+              id: activeItem.id,
+              name: activeItem.name,
+              initialTab: tabId,
+            })
+          }
+          onOpenModal={openModal}
+          onDuplicateItem={duplicateItem}
+          onOpenPersonProfile={openPersonProfile}
+        />
+      ) : (
+        <InventoryList
+          items={items}
+          onSelectItem={selectItem}
+          onOpenModal={openModal}
+          onDuplicateItem={duplicateItem}
+        />
+      )}
 
-        {/* Active Loans */}
-        <div className="bg-surface-card p-7 rounded-[24px] border border-border-subtle/40 shadow-soft flex flex-col justify-between hover:shadow-float transition-shadow duration-300">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-9 h-9 rounded-full bg-brand-gold-light text-brand-gold-hover flex items-center justify-center">
-                <ArrowUpRight className="w-4 h-4" />
-              </div>
-              <p className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Active Loans</p>
-            </div>
-            <div className="flex items-end justify-between mt-6">
-              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tighter">142</h3>
-              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-                <div className="w-3/4 h-full bg-brand-gold-hover rounded-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Maintenance */}
-        <div className="bg-surface-card p-7 rounded-[24px] border border-border-subtle/40 shadow-soft flex flex-col justify-between hover:shadow-float transition-shadow duration-300">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-9 h-9 rounded-full bg-brand-blue-light/50 text-slate-500 flex items-center justify-center">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <p className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Maintenance</p>
-            </div>
-            <div className="flex items-end justify-between mt-6">
-              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tighter">18</h3>
-              <span className="text-[12px] font-semibold text-red-600 mb-1 uppercase tracking-wide">3 Critical</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Equipment Directory */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft overflow-hidden flex flex-col h-full">
-            <div className="p-7 border-b border-border-subtle/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-[16px] font-bold text-slate-900">Equipment Directory</h2>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setModal({ type: "filter" })}
-                  className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
-                >
-                  <Filter className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModal({ type: "directory-actions" })}
-                  className="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50 text-[10px] tracking-widest font-bold text-slate-400 uppercase">
-                    <th className="p-5 pl-7 font-semibold">QR ID</th>
-                    <th className="p-5 font-semibold">Item Name</th>
-                    <th className="p-5 font-semibold">Category</th>
-                    <th className="p-5 font-semibold">Status</th>
-                    <th className="p-5 pr-7 font-semibold">Condition</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle/50 text-[13px]">
-                  {mockEquipment.map((item) => (
-                    <tr
-                      key={item.id}
-                      onClick={() => setModal({ type: "asset", payload: item })}
-                      className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
-                    >
-                      <td className="p-5 pl-7 font-bold text-brand-blue">{item.id}</td>
-                      <td className="p-5">
-                        <div className="flex items-center gap-3">
-                          <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover border border-border-subtle" />
-                          <span className="font-semibold text-slate-900 max-w-[140px] truncate block">{item.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-brand-blue/5 text-brand-blue/80 tracking-wide">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="p-5">
-                        <div className="flex items-center gap-2 font-semibold">
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            item.status === 'Available' ? 'bg-green-500' :
-                            item.status === 'In Use' ? 'bg-brand-gold-hover' : 'bg-red-500'
-                          }`}></span>
-                          <span className={
-                            item.status === 'Available' ? 'text-green-600' :
-                            item.status === 'In Use' ? 'text-brand-gold-hover' : 'text-red-600'
-                          }>{item.status}</span>
-                        </div>
-                      </td>
-                      <td className="p-5 pr-7 text-slate-600 font-medium">
-                        {item.condition}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-5 px-7 border-t border-border-subtle/50 flex items-center justify-between text-[12px]">
-              <span className="text-slate-500 font-medium">Showing 4 of 2,481 entries</span>
-              <div className="flex items-center gap-1.5">
-                <button className="px-3 py-1.5 rounded-lg border border-border-subtle hover:bg-slate-50 font-semibold text-slate-600 transition-colors">Previous</button>
-                <button className="w-8 h-8 rounded-lg bg-brand-blue text-white font-bold flex items-center justify-center shadow-soft">1</button>
-                <button className="w-8 h-8 rounded-lg hover:bg-slate-50 text-slate-600 font-semibold flex items-center justify-center transition-colors">2</button>
-                <button className="px-3 py-1.5 rounded-lg border border-border-subtle hover:bg-slate-50 font-semibold text-slate-600 transition-colors">Next</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Scan Card */}
-          <div className="bg-brand-blue rounded-[24px] shadow-float p-7 relative overflow-hidden text-white">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-            <div className="relative z-10">
-              <QrCode className="w-8 h-8 mb-5 opacity-90" />
-              <h2 className="text-[18px] font-bold mb-2">Scan for Asset Check-in</h2>
-              <p className="text-[13px] text-white/70 leading-relaxed mb-6">
-                Quickly loan equipment or update status by scanning the asset's QR code.
-              </p>
-              <button
-                type="button"
-                onClick={() => setModal({ type: "scanner" })}
-                className="w-full flex items-center justify-center gap-2 bg-white text-brand-blue px-4 py-3 rounded-xl font-bold hover:bg-white/90 transition-colors shadow-soft text-[13px]"
-              >
-                <Camera className="w-4 h-4" />
-                Launch Scanner
-              </button>
-            </div>
-          </div>
-
-          {/* Live Transactions */}
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft overflow-hidden">
-            <div className="p-6 border-b border-border-subtle/50 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-slate-900">Live Transactions</h2>
-              <span className="px-2 py-0.5 bg-brand-gold-hover text-white text-[9px] font-bold rounded-md tracking-widest uppercase shadow-sm">Live</span>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex gap-4 relative">
-                <div className="absolute left-[3px] top-7 bottom-[-24px] w-px bg-border-subtle/50"></div>
-                <div className="w-1.5 h-10 rounded-full bg-brand-blue shrink-0 z-10"></div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-900">Coach Arnaiz checked out 12 Volleyballs</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">2 mins ago • Facility A</p>
-                </div>
-              </div>
-              <div className="flex gap-4 relative">
-                <div className="absolute left-[3px] top-7 bottom-[-24px] w-px bg-border-subtle/50"></div>
-                <div className="w-1.5 h-10 rounded-full bg-brand-gold-hover shrink-0 z-10"></div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-900">Team Alpha returned 5 Soccer Med-kits</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">15 mins ago • Training Ground 1</p>
-                </div>
-              </div>
-              <div className="flex gap-4 relative">
-                <div className="absolute left-[3px] top-7 bottom-[-24px] w-px bg-border-subtle/50"></div>
-                <div className="w-1.5 h-10 rounded-full bg-red-500 shrink-0 z-10"></div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-900">System Alert: Treadmill #011 maintenance overdue</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">1 hour ago • Cardio Center</p>
-                </div>
-              </div>
-              <div className="flex gap-4 relative">
-                <div className="w-1.5 h-10 rounded-full bg-slate-300 shrink-0 z-10"></div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-900 text-slate-600">Maintenance Log: Pool pump filter replaced</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">4 hours ago • Aquatic Hub</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-border-subtle/50">
-              <button
-                type="button"
-                onClick={() => setModal({ type: "activity" })}
-                className="w-full text-center text-[13px] font-bold text-brand-blue hover:text-brand-blue-hover transition-colors py-2"
-              >
-                View All Activity
-              </button>
-            </div>
-          </div>
-
-          {/* Report Damaged Asset */}
-          <button
-            type="button"
-            onClick={() => setModal({ type: "damage" })}
-            className="w-full text-left bg-surface-card p-6 rounded-[24px] border border-dashed border-border-subtle shadow-sm hover:shadow-soft transition-shadow group cursor-pointer"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-slate-100 transition-colors">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-[14px] font-bold text-slate-900">Report Damaged Asset</h3>
-                <p className="text-[12px] text-slate-500 mt-1 leading-relaxed">Broken equipment? File a rapid report for the maintenance team.</p>
-                <div className="flex items-center gap-1.5 text-[12px] font-bold text-brand-blue mt-3 group-hover:gap-2 transition-all">
-                  Start Report <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-      <InventoryModal modal={modal} onClose={closeModal} />
+      <InventoryModals
+        modal={modal}
+        setModal={setModal}
+        items={items}
+        people={inventoryPeople}
+        onClose={closeModal}
+        onSaveItem={saveItem}
+        onAssignItem={assignItem}
+        onReturnItem={returnItem}
+        onExtendAssignment={extendAssignment}
+        onAdjustStock={adjustStock}
+        onSaveMaintenance={saveMaintenance}
+        onSaveNote={saveNote}
+        onConfirmAction={confirmAction}
+        onSelectItem={(item) => {
+          closeModal();
+          selectItem(item);
+        }}
+        onExportCsv={exportCsv}
+      />
     </div>
   );
 }
 
-function InventoryModal({ modal, onClose }) {
-  if (!modal) return null;
-
-  const footer = (
-    <>
-      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-      <PrimaryButton onClick={onClose}>Save</PrimaryButton>
-    </>
-  );
-
-  if (modal.type === "asset") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title={modal.payload.name}
-        description={`${modal.payload.id} | ${modal.payload.category}`}
-        footer={
-          <>
-            <SecondaryButton onClick={onClose}>Close</SecondaryButton>
-            <PrimaryButton onClick={onClose}>Update status</PrimaryButton>
-          </>
-        }
-      >
-        <div className="flex gap-4 rounded-2xl border border-border-subtle/50 bg-slate-50 p-4">
-          <img
-            src={modal.payload.image}
-            alt={modal.payload.name}
-            className="h-20 w-20 rounded-2xl object-cover"
-          />
-          <div className="text-[13px]">
-            <p className="font-bold text-slate-900">{modal.payload.status}</p>
-            <p className="mt-1 text-slate-500">{modal.payload.condition}</p>
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Placeholder detail view
-            </p>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "add") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Add New Asset"
-        description="Register equipment for tracking, loans, and maintenance."
-        footer={footer}
-        size="lg"
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Asset name">
-            <TextInput placeholder="Equipment name" />
-          </Field>
-          <Field label="QR ID">
-            <TextInput placeholder="#ADNU-XX-000" />
-          </Field>
-          <Field label="Category">
-            <SelectInput defaultValue="Basketball">
-              <option>Basketball</option>
-              <option>Volleyball</option>
-              <option>Cardio</option>
-              <option>Soccer</option>
-            </SelectInput>
-          </Field>
-          <Field label="Condition">
-            <SelectInput defaultValue="Excellent">
-              <option>Excellent</option>
-              <option>Good</option>
-              <option>Requires Repair</option>
-            </SelectInput>
-          </Field>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "filter") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Filter Equipment"
-        description="Focus the directory by category, status, or condition."
-        footer={
-          <>
-            <SecondaryButton onClick={onClose}>Reset</SecondaryButton>
-            <PrimaryButton onClick={onClose}>Apply filters</PrimaryButton>
-          </>
-        }
-      >
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Category">
-            <SelectInput defaultValue="All">
-              <option>All</option>
-              <option>Basketball</option>
-              <option>Volleyball</option>
-              <option>Cardio</option>
-            </SelectInput>
-          </Field>
-          <Field label="Status">
-            <SelectInput defaultValue="Any">
-              <option>Any</option>
-              <option>Available</option>
-              <option>In Use</option>
-              <option>Maintenance</option>
-            </SelectInput>
-          </Field>
-          <Field label="Condition">
-            <SelectInput defaultValue="Any">
-              <option>Any</option>
-              <option>Excellent</option>
-              <option>Good</option>
-              <option>Requires Repair</option>
-            </SelectInput>
-          </Field>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "damage") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Report Damaged Asset"
-        description="Create a maintenance intake for damaged or unsafe equipment."
-        footer={footer}
-      >
-        <div className="space-y-4">
-          <Field label="Asset ID or name">
-            <TextInput placeholder="#ADNU-TM-011" />
-          </Field>
-          <Field label="Damage summary">
-            <TextArea placeholder="Describe the issue and where the asset is located." />
-          </Field>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "scanner") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Scanner Ready"
-        description="Camera access can be connected when device scanning is available."
-        footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
-      >
-        <FeedbackPanel tone="info" title="QR workflow placeholder">
-          This modal will become the check-in/check-out scanner entry point.
-        </FeedbackPanel>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "activity") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Activity Feed"
-        description="Recent inventory and maintenance events."
-        footer={<PrimaryButton onClick={onClose}>Close</PrimaryButton>}
-      >
-        <div className="space-y-3 text-[13px] text-slate-600">
-          <p className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-800">
-            Coach Arnaiz checked out 12 volleyballs.
-          </p>
-          <p className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-800">
-            Team Alpha returned 5 soccer med-kits.
-          </p>
-          <p className="rounded-2xl bg-red-50 p-4 font-semibold text-red-700">
-            Treadmill #011 maintenance is overdue.
-          </p>
-        </div>
-      </Modal>
-    );
-  }
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={modal.type === "export" ? "Export Inventory Report" : "Directory Actions"}
-      description="Choose how to continue with inventory data."
-      footer={
-        <>
-          <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={onClose}>Continue</PrimaryButton>
-        </>
-      }
-    >
-      <FeedbackPanel tone="info" title="Ready for integration">
-        Export, bulk update, and archive actions are represented here so backend
-        handlers can attach cleanly.
-      </FeedbackPanel>
-    </Modal>
-  );
+function appendHistory(item, entry) {
+  return {
+    ...item,
+    history: [`${new Date().toLocaleDateString()} - ${entry}`, ...(item.history ?? [])],
+  };
 }

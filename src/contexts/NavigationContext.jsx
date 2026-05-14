@@ -33,6 +33,7 @@ const authViews = new Set([
 function getViewFromHash() {
   const hashRoute = window.location.hash.replace(/^#/, "") || "/";
   if (hashRoute.startsWith("/events/")) return "events";
+  if (hashRoute.startsWith("/inventory/")) return "inventory";
   return routeViews[hashRoute] ?? "dashboard";
 }
 
@@ -42,11 +43,18 @@ function getEventFromHash() {
   return match ? { id: decodeURIComponent(match[1]), name: "Event Details", initialTab: "overview" } : null;
 }
 
+function getInventoryItemFromHash() {
+  const hashRoute = window.location.hash.replace(/^#/, "") || "/";
+  const match = hashRoute.match(/^\/inventory\/([^/]+)$/);
+  return match ? { id: decodeURIComponent(match[1]), name: "Inventory Item", initialTab: "overview" } : null;
+}
+
 export function NavigationProvider({ children }) {
   const [currentView, setCurrentView] = useState(getViewFromHash);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(getEventFromHash);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState(getInventoryItemFromHash);
 
   const navigateTo = (view) => {
     setCurrentView(view);
@@ -59,6 +67,9 @@ export function NavigationProvider({ children }) {
     }
     if (view !== "events") {
       setSelectedEvent(null);
+    }
+    if (view !== "inventory") {
+      setSelectedInventoryItem(null);
     }
   };
 
@@ -75,6 +86,19 @@ export function NavigationProvider({ children }) {
     window.location.hash = viewRoutes.events;
   };
 
+  const selectInventoryItem = (item, initialTab = "overview") => {
+    const nextItem = { id: item.id, name: item.name ?? "Inventory Item", initialTab };
+    setCurrentView("inventory");
+    setSelectedInventoryItem(nextItem);
+    window.location.hash = `/inventory/${encodeURIComponent(item.id)}`;
+  };
+
+  const clearSelectedInventoryItem = () => {
+    setSelectedInventoryItem(null);
+    setCurrentView("inventory");
+    window.location.hash = viewRoutes.inventory;
+  };
+
   useEffect(() => {
     const handleHashChange = () => {
       const nextView = getViewFromHash();
@@ -89,6 +113,11 @@ export function NavigationProvider({ children }) {
         setSelectedEvent(getEventFromHash());
       } else {
         setSelectedEvent(null);
+      }
+      if (nextView === "inventory") {
+        setSelectedInventoryItem(getInventoryItemFromHash());
+      } else {
+        setSelectedInventoryItem(null);
       }
     };
 
@@ -109,6 +138,10 @@ export function NavigationProvider({ children }) {
         setSelectedEvent,
         selectEvent,
         clearSelectedEvent,
+        selectedInventoryItem,
+        setSelectedInventoryItem,
+        selectInventoryItem,
+        clearSelectedInventoryItem,
         isAuthView: authViews.has(currentView),
       }}
     >
