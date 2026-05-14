@@ -69,6 +69,7 @@ export function LandingPage() {
                   alt="Ateneo de Naga University building"
                   className="block h-[420px] w-full object-cover"
                 />
+                <div className="absolute inset-0 rounded-[32px] bg-black/10 pointer-events-none" />
               </div>
             </section>
           </div>
