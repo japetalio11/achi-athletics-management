@@ -1,5 +1,11 @@
 import { athletePool, mockEvents } from "../events/eventsMockData";
 
+export const coachStatuses = ["Active", "On Leave", "Inactive", "Archived"];
+export const coachRoles = ["Head Coach", "Assistant Coach", "Program Coach", "Skills Coach", "Strength Coach"];
+export const credentialStatuses = ["Valid", "Expiring Soon", "Expired", "Pending Review"];
+export const noteTypes = ["Administrative", "Performance", "Roster", "Schedule"];
+export const scheduleStatuses = ["Scheduled", "Ongoing", "Completed", "Cancelled"];
+
 const baseCoaches = [
   {
     id: "COACH-001",
@@ -488,7 +494,7 @@ function formatDateLabel(value) {
 }
 
 function getStatusTone(status) {
-  return status === "Upcoming"
+  return status === "Upcoming" || status === "Scheduled"
     ? "blue"
     : status === "Ongoing"
       ? "gold"
@@ -516,6 +522,9 @@ function buildCoachRecord(coach) {
           studentId: athlete.studentId,
           sport: athlete.sport,
           team: athlete.team,
+          yearLevel: athlete.yearLevel,
+          status: "Assigned",
+          eligibility: assignment.participationStatus,
           role: athlete.role,
           participationStatus: assignment.participationStatus,
           eventTitle: event.title,
@@ -529,7 +538,7 @@ function buildCoachRecord(coach) {
 
   const athleteCount = new Set(assignedAthletes.map((athlete) => athlete.athleteId)).size;
   const upcomingEvent = relatedEvents
-    .filter((event) => event.status === "Upcoming" || event.status === "Ongoing")
+    .filter((event) => event.status === "Scheduled" || event.status === "Upcoming" || event.status === "Ongoing")
     .sort((left, right) => left.startDate.localeCompare(right.startDate))[0];
 
   const schedule = {
@@ -540,7 +549,7 @@ function buildCoachRecord(coach) {
       ),
       upcoming: String(
         relatedEvents.filter(
-          (event) => event.status === "Upcoming" || event.status === "Ongoing",
+          (event) => event.status === "Scheduled" || event.status === "Upcoming" || event.status === "Ongoing",
         ).length,
       ),
       athleteCoverage: `${athleteCount} assigned`,
@@ -559,8 +568,11 @@ function buildCoachRecord(coach) {
           ? "Event closed"
           : event.status === "Draft"
             ? "Planning stage"
+            : event.status === "Cancelled"
+              ? "Cancelled"
             : "Active roster",
       coach: coach.role,
+      responsibility: coach.role,
       summary: event.description,
     })),
     notes: relatedEvents.map((event) => ({
@@ -573,6 +585,25 @@ function buildCoachRecord(coach) {
 
   return {
     ...coach,
+    updatedAt: "2026-05-14",
+    certifications: coach.certifications.map((document, index) => ({
+      id: `${coach.id}-CERT-${index + 1}`,
+      status: index === 0 ? "Valid" : "Pending Review",
+      issuer: coach.department,
+      validUntil: document.meta.split("|")[0]?.replace("Valid through", "").replace("Validated", "").trim() || "Pending",
+      fileName: document.name,
+      ...document,
+    })),
+    qualifications: coach.qualifications.map((item, index) => ({
+      id: `${coach.id}-QUAL-${index + 1}`,
+      ...item,
+    })),
+    notes: coach.performanceNotes.notes.map((note, index) => ({
+      id: `${coach.id}-NOTE-${index + 1}`,
+      type: index === 0 ? "Performance" : "Administrative",
+      date: index === 0 ? "May 14, 2026" : "May 10, 2026",
+      ...note,
+    })),
     assignedAthletes,
     assignedAthleteCount: athleteCount,
     nextEventLabel: upcomingEvent ? formatDateLabel(upcomingEvent.startDate) : "No live schedule",
@@ -582,3 +613,79 @@ function buildCoachRecord(coach) {
 }
 
 export const mockCoaches = baseCoaches.map(buildCoachRecord);
+
+export function createCoachFromForm(values) {
+  const now = new Date().toISOString().slice(0, 10);
+  const name = values.name.trim();
+  const staffId = values.staffId.trim();
+
+  return {
+    id: staffId || `COACH-${Date.now()}`,
+    staffId,
+    name,
+    organizerName: `Coach ${name}`,
+    sport: values.sport.trim(),
+    team: values.team.trim(),
+    role: values.role,
+    status: values.status,
+    experienceYears: Number(values.experienceYears || 0),
+    email: values.email.trim(),
+    phone: values.phone.trim(),
+    address: values.address.trim(),
+    imageUrl: `https://i.pravatar.cc/150?u=${encodeURIComponent(staffId || name)}`,
+    specialization: values.specialization.trim() || "New coaching profile awaiting specialization notes.",
+    department: values.department.trim() || `${values.sport.trim()} Program`,
+    office: values.office.trim() || "Athletics Office",
+    updatedAt: now,
+    overview: {
+      summary:
+        values.summary.trim() ||
+        "New coach profile created locally. Staff can complete assignments, schedule, credentials, and notes before backend persistence is connected.",
+      focus: "Local onboarding",
+      focusNote: "Profile setup",
+      support: "Athletics Office",
+      supportNote: "Awaiting backend sync",
+      nextReview: "Not scheduled",
+      reviewOwner: "Athletics director",
+      alerts: [],
+    },
+    profile: {
+      birthdate: values.birthdate || "Pending",
+      age: values.age || "Pending",
+      gender: values.gender || "Pending",
+      nationality: values.nationality || "Filipino",
+      certificationLevel: values.certificationLevel || "Pending review",
+    },
+    performanceNotes: {
+      leadership: "Pending",
+      leadershipTrend: "Awaiting review",
+      development: "Pending",
+      developmentNote: "No score yet",
+      attendance: "Pending",
+      attendanceNote: "No attendance record",
+      communication: "Pending",
+      communicationNote: "No review yet",
+      trend: [{ label: "Current", value: 40, score: "Pending", active: true }],
+      notes: [],
+    },
+    certifications: [],
+    qualifications: [],
+    milestones: [],
+    assignedAthletes: [],
+    assignedAthleteCount: 0,
+    nextEventLabel: "No live schedule",
+    nextEventTitle: "Awaiting assignment",
+    schedule: {
+      summary: {
+        total: "0",
+        completed: "0",
+        upcoming: "0",
+        athleteCoverage: "0 assigned",
+      },
+      items: [],
+      notes: [],
+      roles: [],
+    },
+    notes: [],
+  };
+}

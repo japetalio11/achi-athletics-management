@@ -3,7 +3,6 @@ import {
   Archive,
   FileText,
   Filter,
-  MoreHorizontal,
   Package,
   PencilLine,
   Plus,
@@ -22,6 +21,7 @@ import {
   TextArea,
   TextInput,
 } from "../../components/ui/Modal";
+import { ActionMenu } from "../../components/ui/ActionMenu";
 import {
   academicStandings,
   athleteStatuses,
@@ -464,44 +464,23 @@ function AthleteActionsMenu({
   };
 
   return (
-    <div className="relative inline-block text-left" onClick={(event) => event.stopPropagation()}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle/60 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue"
-        aria-label={`Actions for ${athlete.name}`}
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
-          <AthleteMenuAction icon={UserRound} label="View Profile" onClick={run(onView)} />
-          <AthleteMenuAction icon={PencilLine} label="Edit Athlete" onClick={run(onEdit)} />
-          <AthleteMenuAction icon={ShieldCheck} label="Update Status" onClick={run(onStatus)} />
-          <AthleteMenuAction icon={FileText} label="Manage Documents" onClick={run(onDocs)} />
-          <AthleteMenuAction icon={Package} label="Manage Gear" onClick={run(onGear)} />
-          <AthleteMenuAction icon={PencilLine} label="Add Note" onClick={run(onNote)} />
-          <AthleteMenuAction icon={Archive} label="Archive Athlete" onClick={run(onArchive)} tone="danger" />
-        </div>
-      )}
+    <div onClick={(event) => event.stopPropagation()}>
+      <ActionMenu
+        label={`Actions for ${athlete.name}`}
+        open={open}
+        onToggle={onToggle}
+        onClose={onClose}
+        items={[
+          { icon: UserRound, label: "View Profile", onClick: run(onView) },
+          { icon: PencilLine, label: "Edit Athlete", onClick: run(onEdit) },
+          { icon: ShieldCheck, label: "Update Status", onClick: run(onStatus) },
+          { icon: FileText, label: "Manage Documents", onClick: run(onDocs) },
+          { icon: Package, label: "Manage Gear", onClick: run(onGear) },
+          { icon: PencilLine, label: "Add Note", onClick: run(onNote) },
+          { icon: Archive, label: "Archive Athlete", onClick: run(onArchive), tone: "danger" },
+        ]}
+      />
     </div>
-  );
-}
-
-function AthleteMenuAction({ icon: Icon, label, onClick, tone = "default" }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors ${
-        tone === "danger"
-          ? "text-red-600 hover:bg-red-50"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
   );
 }
 

@@ -12,7 +12,6 @@ import {
   Image as ImageIcon,
   Mail,
   MapPin,
-  MoreHorizontal,
   Package,
   PencilLine,
   Phone,
@@ -33,6 +32,8 @@ import {
   TextArea,
   TextInput,
 } from "../../components/ui/Modal";
+import { ActionMenu } from "../../components/ui/ActionMenu";
+import { actionIcons } from "../../components/ui/actionButtonIcons";
 import { academicStandings, athleteStatuses, scholarshipTypes, sports, yearLevels } from "./athletesMockData";
 
 const tabs = [
@@ -86,6 +87,7 @@ export function AthleteProfile({
   const [modal, setModal] = useState(null);
   const [eventPage, setEventPage] = useState(0);
   const [activeOverflowMenuId, setActiveOverflowMenuId] = useState(null);
+  const tabSectionRef = useRef(null);
   const eventsPerPage = 3;
 
   const activeCopy = tabCopy[activeTab];
@@ -101,6 +103,19 @@ export function AthleteProfile({
 
   useEffect(() => {
     setActiveOverflowMenuId(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    setActiveTab(initialTab || "overview");
+  }, [athlete.id, initialTab]);
+
+  useEffect(() => {
+    if (!tabSectionRef.current) return;
+
+    tabSectionRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }, [activeTab]);
 
   const statusTone =
@@ -235,7 +250,10 @@ export function AthleteProfile({
         </div>
       </div>
 
-      <div className="relative isolate overflow-hidden rounded-[28px] border border-border-subtle/40 bg-surface-card p-5 shadow-soft">
+      <div
+        ref={tabSectionRef}
+        className="relative isolate overflow-hidden rounded-[28px] border border-border-subtle/40 bg-surface-card p-5 shadow-soft"
+      >
         <section className="border-b border-border-subtle/70 bg-surface-card pb-6 pt-5 shadow-[0_1px_0_0_rgba(241,245,249,0.95),0_14px_24px_-24px_rgba(15,58,110,0.55)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -261,7 +279,9 @@ export function AthleteProfile({
             </div>
           </div>
         </section>
-        <div className="relative z-0 pt-5">{currentTabContent}</div>
+        <div className="relative z-0 pt-5">
+          {currentTabContent}
+        </div>
       </div>
 
       <AthleteProfileModal
@@ -294,8 +314,9 @@ function OverviewTab({ athlete, onOpenTab, onOpenModal }) {
             <button
               type="button"
               onClick={() => onOpenModal({ type: "note", value: "", error: "" })}
-              className="rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold text-white shadow-soft hover:bg-brand-blue-hover"
+              className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold text-white shadow-soft hover:bg-brand-blue-hover"
             >
+              <actionIcons.addNote className="h-3.5 w-3.5" />
               Add note
             </button>
           }
@@ -367,7 +388,7 @@ function DetailsTab({ athlete, onOpenModal }) {
       <div className="space-y-6">
         <ProfileCard
           title="Personal Record"
-          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "personal", values: personalToForm(athlete) })}>Edit</SmallAction>}
+          action={<SmallAction icon={actionIcons.edit} onClick={() => onOpenModal({ type: "edit-section", section: "personal", values: personalToForm(athlete) })}>Edit</SmallAction>}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailField label="Full name" value={athlete.name} />
@@ -385,7 +406,7 @@ function DetailsTab({ athlete, onOpenModal }) {
 
         <ProfileCard
           title="Sport Profile"
-          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "sport", values: sportToForm(athlete) })}>Edit</SmallAction>}
+          action={<SmallAction icon={actionIcons.edit} onClick={() => onOpenModal({ type: "edit-section", section: "sport", values: sportToForm(athlete) })}>Edit</SmallAction>}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailField label="Sport / Team" value={athlete.sport} />
@@ -399,7 +420,7 @@ function DetailsTab({ athlete, onOpenModal }) {
       <div className="space-y-6">
         <ProfileCard
           title="Contact Details"
-          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "contact", values: contactToForm(athlete) })}>Edit</SmallAction>}
+          action={<SmallAction icon={actionIcons.edit} onClick={() => onOpenModal({ type: "edit-section", section: "contact", values: contactToForm(athlete) })}>Edit</SmallAction>}
         >
           <div className="space-y-4">
             <InfoRow icon={Phone} label="Mobile" value={athlete.contact.phone || "Pending"} />
@@ -410,7 +431,7 @@ function DetailsTab({ athlete, onOpenModal }) {
 
         <ProfileCard
           title="Emergency Contact"
-          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "emergency", values: emergencyToForm(athlete) })}>Edit</SmallAction>}
+          action={<SmallAction icon={actionIcons.edit} onClick={() => onOpenModal({ type: "edit-section", section: "emergency", values: emergencyToForm(athlete) })}>Edit</SmallAction>}
         >
           <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
             <p className="text-[14px] font-semibold text-slate-900">{athlete.contact.emergency.name || "Pending"}</p>
@@ -429,7 +450,7 @@ function AcademicsTab({ athlete, onOpenModal }) {
       <div className="space-y-6">
         <ProfileCard
           title="Eligibility Summary"
-          action={<SmallAction onClick={() => onOpenModal({ type: "edit-academics", values: academicsToForm(athlete), errors: {} })}>Edit</SmallAction>}
+          action={<SmallAction icon={actionIcons.edit} onClick={() => onOpenModal({ type: "edit-academics", values: academicsToForm(athlete), errors: {} })}>Edit</SmallAction>}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <MetricTile label="Current GPA" value={`${Number(athlete.gpa).toFixed(2)} / 4.0`} hint={athlete.standing} tone="blue" />
@@ -438,9 +459,9 @@ function AcademicsTab({ athlete, onOpenModal }) {
             <MetricTile label="Eligibility" value={athlete.academics.eligibility} hint={athlete.academics.eligibilityNote} />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <SecondaryButton onClick={() => onOpenModal({ type: "academic-note", values: { title: "", owner: "", body: "" }, errors: {} })}>Add academic note</SecondaryButton>
-            <SecondaryButton onClick={() => onOpenModal({ type: "eligibility", value: athlete.academics.eligibility, note: athlete.academics.eligibilityNote })}>Update eligibility</SecondaryButton>
-            <SecondaryButton onClick={() => onOpenModal({ type: "academic-history" })}>View history</SecondaryButton>
+            <SecondaryButton onClick={() => onOpenModal({ type: "academic-note", values: { title: "", owner: "", body: "" }, errors: {} })}><actionIcons.addNote className="h-3.5 w-3.5" />Add academic note</SecondaryButton>
+            <SecondaryButton onClick={() => onOpenModal({ type: "eligibility", value: athlete.academics.eligibility, note: athlete.academics.eligibilityNote })}><actionIcons.updateStatus className="h-3.5 w-3.5" />Update eligibility</SecondaryButton>
+            <SecondaryButton onClick={() => onOpenModal({ type: "academic-history" })}><actionIcons.view className="h-3.5 w-3.5" />View history</SecondaryButton>
           </div>
         </ProfileCard>
 
@@ -582,20 +603,27 @@ function EventsTab({
                           onClick={() => onOpenModal({ type: "event-details", eventId: event.id })}
                           className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-4 py-2 text-[12px] font-bold tracking-wide text-brand-blue shadow-soft transition-colors hover:bg-brand-blue-light"
                         >
-                          <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                          <actionIcons.viewDetails className="h-3.5 w-3.5" />
                           View details
                         </button>
-                        <OverflowMenu
-                          menuId={`event-${event.id}`}
+                        <ActionMenu
                           label={`More actions for ${event.title}`}
-                          activeMenuId={activeOverflowMenuId}
-                          setActiveMenuId={setActiveOverflowMenuId}
+                          open={activeOverflowMenuId === `event-${event.id}`}
+                          onToggle={() =>
+                            setActiveOverflowMenuId((current) =>
+                              current === `event-${event.id}` ? null : `event-${event.id}`,
+                            )
+                          }
+                          onClose={() => setActiveOverflowMenuId(null)}
+                          widthClass="w-48"
                           items={[
                             {
+                              icon: actionIcons.updateStatus,
                               label: "Update participation",
                               onClick: () => onOpenModal({ type: "event-status", eventId: event.id, participation: event.participation, attendance: event.attendance }),
                             },
                             {
+                              icon: actionIcons.addNote,
                               label: "Add result note",
                               onClick: () => onOpenModal({ type: "result-note", eventId: event.id, value: "", error: "" }),
                             },
@@ -678,36 +706,45 @@ function AssetsTab({ athlete, activeOverflowMenuId, setActiveOverflowMenuId, onO
           <div className="grid gap-3 md:grid-cols-2">
             {athlete.documents.map((document) => (
               <div key={document.id} className="rounded-2xl border border-border-subtle/60 p-4">
-                <button
-                  type="button"
-                  onClick={() => onOpenModal({ type: "view-document", documentId: document.id })}
-                  className="flex w-full items-start gap-4 text-left"
-                >
-                  <DocumentIcon kind={document.kind} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-slate-900">{document.name}</p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{document.meta}</p>
-                    <div className="mt-2"><StatusPill status={document.status} /></div>
+                <div className="flex items-start justify-between gap-4">
+                  <button
+                    type="button"
+                    onClick={() => onOpenModal({ type: "view-document", documentId: document.id })}
+                    className="flex min-w-0 flex-1 items-start gap-4 text-left"
+                  >
+                    <DocumentIcon kind={document.kind} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-slate-900">{document.name}</p>
+                      <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{document.meta}</p>
+                      <div className="mt-2"><StatusPill status={document.status} /></div>
+                    </div>
+                  </button>
+                  <div className="shrink-0">
+                    <ActionMenu
+                      label={`Document actions for ${document.name}`}
+                      open={activeOverflowMenuId === `document-${document.id}`}
+                      onToggle={() =>
+                        setActiveOverflowMenuId((current) =>
+                          current === `document-${document.id}` ? null : `document-${document.id}`,
+                        )
+                      }
+                      onClose={() => setActiveOverflowMenuId(null)}
+                      widthClass="w-48"
+                      items={[
+                        {
+                          icon: actionIcons.edit,
+                          label: "Replace",
+                          onClick: () => onOpenModal({ type: "replace-document", documentId: document.id, values: { name: document.name, fileName: "" }, errors: {} }),
+                        },
+                        {
+                          icon: actionIcons.remove,
+                          label: "Remove",
+                          tone: "danger",
+                          onClick: () => onOpenModal({ type: "confirm-remove-document", documentId: document.id }),
+                        },
+                      ]}
+                    />
                   </div>
-                </button>
-                <div className="mt-4 flex justify-end pr-2">
-                  <OverflowMenu
-                    menuId={`document-${document.id}`}
-                    label={`Document actions for ${document.name}`}
-                    activeMenuId={activeOverflowMenuId}
-                    setActiveMenuId={setActiveOverflowMenuId}
-                    items={[
-                      {
-                        label: "Replace",
-                        onClick: () => onOpenModal({ type: "replace-document", documentId: document.id, values: { name: document.name, fileName: "" }, errors: {} }),
-                      },
-                      {
-                        label: "Remove",
-                        tone: "danger",
-                        onClick: () => onOpenModal({ type: "confirm-remove-document", documentId: document.id }),
-                      },
-                    ]}
-                  />
                 </div>
               </div>
             ))}
@@ -763,18 +800,25 @@ function AssetsTab({ athlete, activeOverflowMenuId, setActiveOverflowMenuId, onO
                       <td className="p-5"><StatusPill status={item.status} /></td>
                       <td className="p-5 pr-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <SmallAction onClick={() => onOpenModal({ type: "view-gear", gearId: item.id })}>View</SmallAction>
-                          <OverflowMenu
-                            menuId={`gear-${item.id}`}
+                          <SmallAction icon={actionIcons.view} onClick={() => onOpenModal({ type: "view-gear", gearId: item.id })}>View</SmallAction>
+                          <ActionMenu
                             label={`Gear actions for ${item.name}`}
-                            activeMenuId={activeOverflowMenuId}
-                            setActiveMenuId={setActiveOverflowMenuId}
+                            open={activeOverflowMenuId === `gear-${item.id}`}
+                            onToggle={() =>
+                              setActiveOverflowMenuId((current) =>
+                                current === `gear-${item.id}` ? null : `gear-${item.id}`,
+                              )
+                            }
+                            onClose={() => setActiveOverflowMenuId(null)}
+                            widthClass="w-48"
                             items={[
                               {
+                                icon: actionIcons.markReturned,
                                 label: "Returned",
                                 onClick: () => onOpenModal({ type: "confirm-return-gear", gearId: item.id }),
                               },
                               {
+                                icon: ShieldAlert,
                                 label: "Issue",
                                 tone: "danger",
                                 onClick: () => onOpenModal({ type: "report-gear", gearId: item.id, value: "", error: "" }),
@@ -836,7 +880,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title="Add Athlete Note"
         description="Add a local activity note to this athlete profile."
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveProfileNote(modal, onSetModal, onAddNote, athlete, onClose)}>Save note</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveProfileNote(modal, onSetModal, onAddNote, athlete, onClose)}><actionIcons.addNote className="h-3.5 w-3.5" />Save note</PrimaryButton></>}
       >
         <Field label="Note" error={modal.error}>
           <TextArea value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value, error: "" }))} />
@@ -944,7 +988,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title="Add Academic Note"
         description="Capture an adviser, registrar, or athlete services update."
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveAcademicNote(modal, onSetModal, updateAthlete)}>Save note</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveAcademicNote(modal, onSetModal, updateAthlete)}><actionIcons.addNote className="h-3.5 w-3.5" />Save note</PrimaryButton></>}
       >
         <div className="grid gap-4">
           <Field label="Title" error={modal.errors.title}>
@@ -1062,7 +1106,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title="Add Result Note"
         description={currentEvent.title}
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveResultNote(modal, onSetModal, updateAthlete, currentEvent)}>Save note</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveResultNote(modal, onSetModal, updateAthlete, currentEvent)}><actionIcons.addNote className="h-3.5 w-3.5" />Save note</PrimaryButton></>}
       >
         <Field label="Result note" error={modal.error}>
           <TextArea value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value, error: "" }))} />
@@ -1079,7 +1123,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title={isReplace ? "Replace Document" : "Upload Document"}
         description={isReplace ? currentDocument.name : "Create a frontend-only file record."}
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveDocument(modal, onSetModal, updateAthlete, currentDocument)}>Save document</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveDocument(modal, onSetModal, updateAthlete, currentDocument)}><actionIcons.upload className="h-3.5 w-3.5" />Save document</PrimaryButton></>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Document name" error={modal.errors.name}>
@@ -1128,7 +1172,7 @@ function AthleteProfileModal({
         footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => updateAthlete(
           (current) => ({ ...current, documents: current.documents.filter((document) => document.id !== currentDocument.id) }),
           { tone: "warning", title: "Document removed", message: "The document record was removed locally." },
-        )}>Remove document</PrimaryButton></>}
+        )}><actionIcons.remove className="h-3.5 w-3.5" />Remove document</PrimaryButton></>}
       >
         <FeedbackPanel tone="warning" title="Confirmation required">This does not delete a real file because storage is not connected yet.</FeedbackPanel>
       </Modal>
@@ -1142,7 +1186,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title="Assign Gear"
         description="Issue a frontend-only equipment record to this athlete."
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveGear(modal, onSetModal, updateAthlete)}>Assign gear</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveGear(modal, onSetModal, updateAthlete)}><actionIcons.manageGear className="h-3.5 w-3.5" />Assign gear</PrimaryButton></>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Item name" error={modal.errors.name}>
@@ -1187,7 +1231,7 @@ function AthleteProfileModal({
           onClose={onClose}
           title="Mark Gear Returned"
           description={`${currentGear.name} will be marked returned in local state.`}
-          footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => updateGear(currentGear.id, updateAthlete, { status: "Returned", dueDate: new Date().toISOString().slice(0, 10) }, "Gear returned")}>Mark returned</PrimaryButton></>}
+          footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => updateGear(currentGear.id, updateAthlete, { status: "Returned", dueDate: new Date().toISOString().slice(0, 10) }, "Gear returned")}><actionIcons.markReturned className="h-3.5 w-3.5" />Mark returned</PrimaryButton></>}
         >
           <FeedbackPanel tone="info" title="Return confirmation">This updates the profile table only. Inventory reconciliation can be added later.</FeedbackPanel>
         </Modal>
@@ -1216,7 +1260,7 @@ function AthleteProfileModal({
         onClose={onClose}
         title="Archive Athlete"
         description={`${athlete.name} will be marked archived in local state.`}
-        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => { onArchiveAthlete(athlete.id, "Archived"); onClose(); }}>Archive athlete</PrimaryButton></>}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => { onArchiveAthlete(athlete.id, "Archived"); onClose(); }}><actionIcons.archive className="h-3.5 w-3.5" />Archive athlete</PrimaryButton></>}
       >
         <FeedbackPanel tone="warning" title="Confirmation required">This action is local-only until backend persistence is connected.</FeedbackPanel>
       </Modal>
@@ -1471,86 +1515,19 @@ function EmptyState({ title, body }) {
   );
 }
 
-function SmallAction({ children, onClick, tone = "default" }) {
+function SmallAction({ children, icon: Icon, onClick, tone = "default" }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
         tone === "danger"
           ? "border-red-100 bg-red-50 text-red-700 hover:bg-red-100"
           : "border-border-subtle bg-white text-slate-600 hover:bg-slate-50"
       }`}
     >
+      {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
       {children}
-    </button>
-  );
-}
-
-function OverflowMenu({ menuId, label, items, activeMenuId, setActiveMenuId }) {
-  const rootRef = useRef(null);
-  const isOpen = activeMenuId === menuId;
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const handlePointerDown = (event) => {
-      if (rootRef.current && !rootRef.current.contains(event.target)) {
-        setActiveMenuId(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, [isOpen, setActiveMenuId]);
-
-  return (
-    <div ref={rootRef} className="relative inline-block text-left">
-      <button
-        type="button"
-        aria-label={label}
-        aria-expanded={isOpen}
-        onClick={() => setActiveMenuId(isOpen ? null : menuId)}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
-      {isOpen && (
-        <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
-          {items.map((item) => (
-            <OverflowMenuItem
-              key={item.label}
-              label={item.label}
-              tone={item.tone}
-              onClick={() => {
-                item.onClick();
-                setActiveMenuId(null);
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OverflowMenuItem({ label, onClick, tone = "default" }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors ${
-        tone === "danger"
-          ? "text-red-600 hover:bg-red-50"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-      }`}
-    >
-      {label}
     </button>
   );
 }

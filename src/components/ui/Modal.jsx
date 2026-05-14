@@ -142,7 +142,7 @@ export function SecondaryButton({ children, className = "", ...props }) {
   return (
     <button
       type="button"
-      className={`rounded-full border border-border-subtle bg-surface-card px-4 py-2.5 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-50 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle bg-surface-card px-4 py-2.5 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-50 ${className}`}
       {...props}
     >
       {children}
