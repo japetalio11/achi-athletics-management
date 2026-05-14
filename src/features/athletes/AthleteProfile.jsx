@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  ShieldCheck,
-  TrendingUp,
+  Activity,
+  Award,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Dumbbell,
   FileText,
   Image as ImageIcon,
-  Activity,
-  Dumbbell,
-  HeartPulse,
+  Mail,
+  MapPin,
   MoreVertical,
+  Phone,
   Plus,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingUp,
+  UserRound,
 } from "lucide-react";
 import {
   Field,
@@ -21,498 +30,852 @@ import {
   TextInput,
 } from "../../components/ui/Modal";
 
+const tabs = [
+  { id: "overview", label: "Overview" },
+  { id: "details", label: "Detailed Info" },
+  { id: "academics", label: "Academics" },
+  { id: "events", label: "Events" },
+  { id: "assets", label: "Documents & Gear" },
+];
+
+const equipmentIcons = {
+  shoe: ImageIcon,
+  strength: Dumbbell,
+  monitor: Activity,
+  default: ImageIcon,
+};
+
+const tabCopy = {
+  overview: {
+    title: "Athlete Snapshot",
+    description:
+      "See the latest profile summary, current priorities, and recent milestones.",
+  },
+  details: {
+    title: "Detailed Athlete Information",
+    description:
+      "Separate identity, contact, and athlete history into one cleaner profile record.",
+  },
+  academics: {
+    title: "Academic Monitoring",
+    description:
+      "Track GPA, eligibility, attendance, and intervention notes for compliance review.",
+  },
+  events: {
+    title: "Events Participation",
+    description:
+      "Review assigned events, competition results, attendance status, and coach remarks.",
+  },
+  assets: {
+    title: "Documents and Equipment",
+    description:
+      "Review files, clearances, and issued gear without leaving the athlete page.",
+  },
+};
+
 export function AthleteProfile({ athlete }) {
   const [modal, setModal] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [eventPage, setEventPage] = useState(0);
   const closeModal = () => setModal(null);
+  const eventsPerPage = 3;
 
-  return (
-    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Top Profile Card */}
-      <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-blue/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+  const statusTone =
+    athlete.status === "Cleared"
+      ? "bg-green-50 text-green-700"
+      : athlete.status === "Pending Review"
+        ? "bg-amber-50 text-amber-700"
+        : "bg-red-50 text-red-700";
 
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 relative z-10">
-          <div className="flex items-start gap-6">
-            <img
-              src={athlete.imageUrl}
-              alt={athlete.name}
-              className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-soft"
-            />
-            <div>
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                {athlete.name}
-              </h1>
-              <p className="text-[14px] text-brand-blue font-medium mt-1">
-                {athlete.sport} | {athlete.event}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-6 mt-6">
-                <div>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                    Student ID
-                  </p>
-                  <p className="text-[14px] font-medium text-slate-900">
-                    {athlete.id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                    Academic Standing
-                  </p>
-                  <p className="text-[14px] font-semibold text-brand-gold">
-                    {athlete.standing}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                    Medical Status
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    <p className="text-[14px] font-medium text-slate-900">
-                      {athlete.status}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                    Coach
-                  </p>
-                  <p className="text-[14px] font-medium text-slate-900">
-                    {athlete.coach}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-4">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[12px] font-semibold">
-                {athlete.scholarship}
-              </span>
-              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[12px] font-semibold">
-                {athlete.year}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setModal({ type: "status" })}
-              className="flex items-center gap-2 bg-brand-blue text-white px-5 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide mt-2"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Elite Status
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (1/3) */}
-        <div className="space-y-6">
-          {/* Academic Monitoring */}
-          <div className="bg-surface-card p-7 rounded-[24px] border border-border-subtle/40 shadow-soft">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[16px] font-bold text-slate-900 leading-tight">
-                Academic
-                <br />
-                Monitoring
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModal({ type: "report" })}
-                className="text-[12px] font-semibold text-brand-blue hover:underline"
-              >
-                Full Report
-              </button>
-            </div>
-
-            {/* Minimal line chart placeholder */}
-            <div className="h-28 w-full flex items-end justify-between px-4 pb-8 mb-4 border-b border-border-subtle/50 mt-8">
-              <div className="w-2 h-[45%] bg-slate-200 rounded-full relative group">
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                  S1 '22
-                </span>
-              </div>
-              <div className="w-2 h-[55%] bg-slate-200 rounded-full relative group">
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                  S2 '22
-                </span>
-              </div>
-              <div className="w-2 h-[75%] bg-brand-blue-light rounded-full relative group">
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-brand-blue whitespace-nowrap">
-                  S1 '23
-                </span>
-              </div>
-              <div className="w-2 h-[95%] bg-brand-blue rounded-full relative group shadow-soft">
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-brand-blue whitespace-nowrap">
-                  CURRENT
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between mt-6 border border-border-subtle/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[12px] text-slate-500 font-medium">
-                    Current GPA
-                  </p>
-                  <p className="text-[16px] font-bold text-brand-blue">
-                    {athlete.gpa} / 4.0
-                  </p>
-                </div>
-              </div>
-              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-[10px] font-bold">
-                +12.5%
-              </span>
-            </div>
-          </div>
-
-          {/* Digital Documents */}
-          <div className="bg-surface-card p-7 rounded-[24px] border border-border-subtle/40 shadow-soft">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[16px] font-bold text-slate-900">
-                Digital Documents
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModal({ type: "document" })}
-                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setModal({
-                    type: "view-document",
-                    payload: "Scholarship_Agreement.pdf",
-                  })
-                }
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate">
-                    Scholarship_Agreement.pdf
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Signed: Oct 12, 2023 • 2.4 MB
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setModal({
-                    type: "view-document",
-                    payload: "Medical_Clearance_2024.docx",
-                  })
-                }
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-brand-blue flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate">
-                    Medical_Clearance_2024.docx
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Expires: Jun 20, 2024 • 1.1 MB
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setModal({
-                    type: "view-document",
-                    payload: "Athlete_ID_Scan.png",
-                  })
-                }
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border-subtle/50 hover:border-brand-blue/20 hover:bg-slate-50 transition-all cursor-pointer text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate">
-                    Athlete_ID_Scan.png
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Verified • 850 KB
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Performance Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="bg-surface-card p-6 rounded-[24px] border border-border-subtle/40 shadow-soft">
-              <div className="flex items-center gap-2 text-brand-blue mb-4">
-                <Activity className="w-4 h-4" />
-                <h3 className="text-[13px] font-semibold">
-                  Sprint Performance
-                </h3>
-              </div>
-              <p className="text-4xl font-extrabold text-slate-900 tracking-tighter">
-                54.2
-              </p>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                400m Hurdles (Sec)
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-4 overflow-hidden">
-                <div className="w-4/5 h-full bg-brand-blue rounded-full"></div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-3">
-                Personal Best • -0.4s improvement
-              </p>
-            </div>
-
-            <div className="bg-surface-card p-6 rounded-[24px] border border-border-subtle/40 shadow-soft">
-              <div className="flex items-center gap-2 text-brand-gold mb-4">
-                <Dumbbell className="w-4 h-4" />
-                <h3 className="text-[13px] font-semibold">Strength (Squat)</h3>
-              </div>
-              <p className="text-4xl font-extrabold text-slate-900 tracking-tighter">
-                115
-              </p>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                Max Load (KG)
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-4 overflow-hidden">
-                <div className="w-11/12 h-full bg-brand-gold rounded-full"></div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-3">
-                Target: 125kg for Spring Games
-              </p>
-            </div>
-
-            <div className="bg-surface-card p-6 rounded-[24px] border border-border-subtle/40 shadow-soft">
-              <div className="flex items-center gap-2 text-slate-600 mb-4">
-                <HeartPulse className="w-4 h-4" />
-                <h3 className="text-[13px] font-semibold">Wellness Score</h3>
-              </div>
-              <p className="text-4xl font-extrabold text-slate-900 tracking-tighter">
-                92
-                <span className="text-[18px] text-slate-400 font-bold">
-                  /100
-                </span>
-              </p>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                Optimal Readiness
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-4 overflow-hidden">
-                <div className="w-[92%] h-full bg-slate-700 rounded-full"></div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-3">
-                Sleep: 8.5h • Strain: Low
-              </p>
-            </div>
-          </div>
-
-          {/* Equipment History */}
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft overflow-hidden">
-            <div className="p-7 border-b border-border-subtle/50 flex items-center justify-between">
-              <h2 className="text-[16px] font-bold text-slate-900">
-                Equipment History
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModal({ type: "issue" })}
-                className="flex items-center gap-2 bg-brand-blue text-white px-4 py-2 rounded-full font-medium hover:bg-brand-blue-hover transition-colors shadow-soft text-[12px] tracking-wide"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                ISSUE ITEM
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50 text-[10px] tracking-widest font-bold text-slate-400 uppercase border-b border-border-subtle/50">
-                    <th className="p-5 pl-7 font-semibold">Item Description</th>
-                    <th className="p-5 font-semibold">Issued Date</th>
-                    <th className="p-5 font-semibold">Due Date</th>
-                    <th className="p-5 font-semibold">Status</th>
-                    <th className="p-5 pr-7 font-semibold text-right">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle/50 text-[13px]">
-                  <tr className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-5 pl-7">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                          <ImageIcon className="w-5 h-5 opacity-50" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            Nike Air Zoom Victory
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            Serial: #TK-8912
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-5 text-slate-600">Nov 02, 2023</td>
-                    <td className="p-5 text-slate-600">Mar 15, 2024</td>
-                    <td className="p-5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-50 text-green-700 uppercase tracking-wider">
-                        In Possession
-                      </span>
-                    </td>
-                    <td className="p-5 pr-7 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setModal({
-                            type: "equipment-action",
-                            payload: "Nike Air Zoom Victory",
-                          })
-                        }
-                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-5 pl-7">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                          <Dumbbell className="w-5 h-5 opacity-50" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            Resistance Band Set (L4)
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            Serial: #TR-440
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-5 text-slate-600">Oct 15, 2023</td>
-                    <td className="p-5 text-slate-600">Oct 30, 2023</td>
-                    <td className="p-5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
-                        Returned
-                      </span>
-                    </td>
-                    <td className="p-5 pr-7 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setModal({
-                            type: "equipment-action",
-                            payload: "Resistance Band Set (L4)",
-                          })
-                        }
-                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-5 pl-7">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                          <Activity className="w-5 h-5 opacity-50" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            Polar H10 Heart Monitor
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            Serial: #SN-90221
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-5 text-slate-600">Nov 28, 2023</td>
-                    <td className="p-5 font-semibold text-red-600">
-                      Dec 15, 2023
-                    </td>
-                    <td className="p-5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-700 uppercase tracking-wider">
-                        Overdue
-                      </span>
-                    </td>
-                    <td className="p-5 pr-7 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setModal({
-                            type: "equipment-action",
-                            payload: "Polar H10 Heart Monitor",
-                          })
-                        }
-                        className="text-slate-400 hover:text-brand-blue transition-colors p-1.5 rounded-lg hover:bg-slate-100"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Recovery Plan */}
-          <div className="bg-brand-blue-light/80 p-7 rounded-[24px] border border-brand-blue/20 shadow-soft flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-            <div className="w-24 h-24 rounded-2xl bg-slate-800 shrink-0 overflow-hidden relative shadow-md">
-              <img
-                src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=200"
-                alt="Therapy"
-                className="w-full h-full object-cover opacity-80"
+  const activeCopy = tabCopy[activeTab];
+  const currentTabContent = useMemo(() => {
+    if (activeTab === "details") {
+      return (
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <ProfileCard title="Personal Record">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DetailField label="Full name" value={athlete.name} />
+              <DetailField label="Student ID" value={athlete.id} />
+              <DetailField label="Birthdate" value={athlete.personal.birthdate} />
+              <DetailField label="Age" value={athlete.personal.age} />
+              <DetailField label="Gender" value={athlete.personal.gender} />
+              <DetailField
+                label="Nationality"
+                value={athlete.personal.nationality}
               />
+              <DetailField label="Height" value={athlete.personal.height} />
+              <DetailField label="Weight" value={athlete.personal.weight} />
+              <DetailField label="Blood type" value={athlete.personal.bloodType} />
+              <DetailField label="Dominant side" value={athlete.personal.side} />
             </div>
-            <div className="flex-1">
-              <h2 className="text-[16px] font-bold text-slate-900 mb-2">
-                Recovery Plan & Coaching Notes
-              </h2>
-              <p className="text-[13px] text-slate-600 leading-relaxed">
-                "Sarah is showing excellent progression in her fast-twitch
-                response drills. We are focusing on hurdle clearance mechanics
-                this week. Monitoring slight inflammation in left Achilles -
-                physical therapy sessions scheduled for Tuesday and Thursday."
-              </p>
-              <div className="flex items-center gap-3 mt-4">
-                <div className="flex -space-x-2">
-                  <div className="w-7 h-7 rounded-full bg-brand-blue border-2 border-white flex items-center justify-center text-[10px] font-bold text-white z-10">
-                    MT
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-brand-gold border-2 border-white flex items-center justify-center text-[10px] font-bold text-white z-0">
-                    DR
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Updated 4 hours ago by Head Coach & Physio
+          </ProfileCard>
+
+          <ProfileCard title="Contact Details">
+            <div className="space-y-4">
+              <InfoRow
+                icon={Phone}
+                label="Mobile"
+                value={athlete.contact.phone}
+              />
+              <InfoRow
+                icon={Mail}
+                label="Email"
+                value={athlete.contact.email}
+              />
+              <InfoRow
+                icon={MapPin}
+                label="Address"
+                value={athlete.contact.address}
+              />
+              <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                  Emergency Contact
+                </p>
+                <p className="mt-2 text-[14px] font-semibold text-slate-900">
+                  {athlete.contact.emergency.name}
+                </p>
+                <p className="text-[13px] text-slate-600">
+                  {athlete.contact.emergency.relationship}
+                </p>
+                <p className="mt-1 text-[13px] text-slate-700">
+                  {athlete.contact.emergency.phone}
                 </p>
               </div>
             </div>
+          </ProfileCard>
+        </div>
+      );
+    }
+
+    if (activeTab === "academics") {
+      return (
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="space-y-6">
+            <ProfileCard title="Eligibility Summary">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MetricTile
+                  label="Current GPA"
+                  value={`${athlete.gpa.toFixed(2)} / 4.0`}
+                  hint={athlete.academics.gpaTrend}
+                  tone="blue"
+                />
+                <MetricTile
+                  label="Attendance"
+                  value={athlete.academics.attendance}
+                  hint={athlete.academics.attendanceNote}
+                  tone="gold"
+                />
+                <MetricTile
+                  label="Units Enrolled"
+                  value={athlete.academics.units}
+                  hint={athlete.academics.term}
+                />
+                <MetricTile
+                  label="Eligibility"
+                  value={athlete.academics.eligibility}
+                  hint={athlete.academics.eligibilityNote}
+                />
+              </div>
+            </ProfileCard>
+
+            <ProfileCard title="Adviser and Support Notes">
+              <div className="space-y-3">
+                {athlete.academics.notes.map((note) => (
+                  <div
+                    key={note.title}
+                    className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {note.title}
+                      </p>
+                      <p className="text-[11px] text-slate-500">{note.owner}</p>
+                    </div>
+                    <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+                      {note.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ProfileCard>
+          </div>
+
+          <ProfileCard title="Semester Trend">
+            <div className="space-y-5">
+              <div className="flex h-56 items-end justify-between gap-3 rounded-[24px] border border-border-subtle/60 bg-slate-50/70 px-5 pb-10 pt-6">
+                {athlete.academics.trend.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex flex-1 flex-col items-center justify-end gap-3"
+                  >
+                    <div className="flex h-full w-full items-end justify-center">
+                      <div
+                        className={`w-full max-w-10 rounded-full ${
+                          item.active
+                            ? "bg-brand-blue shadow-soft"
+                            : "bg-slate-200"
+                        }`}
+                        style={{ height: `${item.value}%` }}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
+                          item.active ? "text-brand-blue" : "text-slate-400"
+                        }`}
+                      >
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-700">
+                        {item.score}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {athlete.academics.currentSubjects.map((subject) => (
+                  <div
+                    key={subject.name}
+                    className="rounded-2xl border border-border-subtle/60 bg-white p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {subject.name}
+                      </p>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                        {subject.grade}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[12px] text-slate-500">
+                      {subject.schedule}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ProfileCard>
+        </div>
+      );
+    }
+
+    if (activeTab === "events") {
+      const totalEventPages = Math.max(
+        1,
+        Math.ceil(athlete.eventsParticipation.items.length / eventsPerPage),
+      );
+      const currentEventPage = Math.min(eventPage, totalEventPages - 1);
+      const visibleEvents = athlete.eventsParticipation.items.slice(
+        currentEventPage * eventsPerPage,
+        currentEventPage * eventsPerPage + eventsPerPage,
+      );
+
+      return (
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricTile
+              label="Total Events"
+              value={athlete.eventsParticipation.summary.total}
+              hint="This tracking cycle"
+              tone="blue"
+            />
+            <MetricTile
+              label="Completed"
+              value={athlete.eventsParticipation.summary.completed}
+              hint="Finished participation"
+              tone="gold"
+            />
+            <MetricTile
+              label="Upcoming"
+              value={athlete.eventsParticipation.summary.upcoming}
+              hint="Still scheduled"
+            />
+            <MetricTile
+              label="Attendance"
+              value={athlete.eventsParticipation.summary.attendance}
+              hint="Session presence rate"
+            />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+            <ProfileCard title="Participation History">
+              <div className="space-y-3">
+                {visibleEvents.map((event) => (
+                  <div
+                    key={`${event.date}-${event.title}`}
+                    className="rounded-[22px] border border-border-subtle/60 bg-white p-4 shadow-soft"
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[15px] font-semibold text-slate-900">
+                            {event.title}
+                          </p>
+                          <EventStatusPill value={event.status} />
+                        </div>
+                        <p className="mt-1 text-[12px] text-slate-500">
+                          {event.type} | {event.date} | {event.venue}
+                        </p>
+                        {event.summary ? (
+                          <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+                            {event.summary}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="grid min-w-full gap-2 sm:grid-cols-3 lg:min-w-[280px]">
+                        <EventMiniStat label="Attendance" value={event.attendance} />
+                        <EventMiniStat label="Result" value={event.result} />
+                        <EventMiniStat label="Coach" value={event.coach} />
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 flex items-center justify-between rounded-2xl border border-brand-blue/15 bg-brand-blue-light/80 px-4 py-3 shadow-soft">
+                <button
+                  type="button"
+                  onClick={() => setEventPage((page) => Math.max(0, page - 1))}
+                  disabled={currentEventPage === 0}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-blue">
+                  Page {currentEventPage + 1} of {totalEventPages}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEventPage((page) => Math.min(totalEventPages - 1, page + 1))
+                  }
+                  disabled={currentEventPage >= totalEventPages - 1}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </ProfileCard>
+
+            <ProfileCard title="Participation Notes">
+              <div className="space-y-4">
+                {athlete.eventsParticipation.notes.map((entry) => (
+                  <div
+                    key={`${entry.date}-${entry.title}`}
+                    className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {entry.title}
+                      </p>
+                      <span className="text-[11px] text-slate-500">
+                        {entry.date}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+                      {entry.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-border-subtle/60 bg-white p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  Common Event Roles
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {athlete.eventsParticipation.roles.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-brand-blue-light px-3 py-1.5 text-[12px] font-semibold text-brand-blue"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </ProfileCard>
           </div>
         </div>
+      );
+    }
+
+    if (activeTab === "assets") {
+      return (
+        <div className="space-y-6">
+          <ProfileCard
+            title="Digital Documents"
+            action={
+              <button
+                type="button"
+                onClick={() => setModal({ type: "document" })}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-50"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            }
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              {athlete.documents.map((document) => (
+                <button
+                  key={document.name}
+                  type="button"
+                  onClick={() =>
+                    setModal({
+                      type: "view-document",
+                      payload: document.name,
+                    })
+                  }
+                  className="flex items-start gap-4 rounded-2xl border border-border-subtle/60 p-4 text-left transition-all hover:border-brand-blue/20 hover:bg-slate-50"
+                >
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                      document.kind === "pdf"
+                        ? "bg-red-50 text-red-500"
+                        : document.kind === "image"
+                          ? "bg-slate-100 text-slate-500"
+                          : "bg-brand-blue-light text-brand-blue"
+                    }`}
+                  >
+                    {document.kind === "image" ? (
+                      <ImageIcon className="h-5 w-5" />
+                    ) : (
+                      <FileText className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-slate-900">
+                      {document.name}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
+                      {document.meta}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </ProfileCard>
+
+          <ProfileCard
+            title="Equipment History"
+            action={
+              <button
+                type="button"
+                onClick={() => setModal({ type: "issue" })}
+                className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                ISSUE ITEM
+              </button>
+            }
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border-subtle/60 bg-slate-50/70 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    <th className="p-5 pl-0">Item Description</th>
+                    <th className="p-5">Issued Date</th>
+                    <th className="p-5">Due Date</th>
+                    <th className="p-5">Status</th>
+                    <th className="p-5 pr-0 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle/50 text-[13px]">
+                  {athlete.equipmentHistory.map((item) => {
+                    const Icon =
+                      equipmentIcons[item.icon] ?? equipmentIcons.default;
+                    return (
+                      <tr
+                        key={`${item.name}-${item.serial}`}
+                        className="transition-colors hover:bg-slate-50/70"
+                      >
+                        <td className="p-5 pl-0">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                              <Icon className="h-5 w-5 opacity-60" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-900">
+                                {item.name}
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                Serial: {item.serial}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-5 text-slate-600">{item.issuedDate}</td>
+                        <td
+                          className={`p-5 ${
+                            item.status === "Overdue"
+                              ? "font-semibold text-red-600"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {item.dueDate}
+                        </td>
+                        <td className="p-5">
+                          <StatusPill status={item.status} />
+                        </td>
+                        <td className="p-5 pr-0 text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setModal({
+                                type: "equipment-action",
+                                payload: item.name,
+                              })
+                            }
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-blue"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </ProfileCard>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricTile
+            label="Eligibility"
+            value={athlete.overview.eligibility}
+            hint={athlete.overview.eligibilityNote}
+            tone="blue"
+          />
+          <MetricTile
+            label="Training Load"
+            value={athlete.overview.trainingLoad}
+            hint={athlete.overview.trainingNote}
+            tone="gold"
+          />
+          <MetricTile
+            label="Next Review"
+            value={athlete.overview.nextReview}
+            hint={athlete.overview.reviewOwner}
+          />
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <ProfileCard title="Current Focus and Alerts">
+            <div className="grid gap-3">
+              {athlete.overview.alerts.map((alert) => (
+                <div
+                  key={alert.title}
+                  className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        alert.level === "attention"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-brand-blue-light text-brand-blue"
+                      }`}
+                    >
+                      {alert.level === "attention" ? (
+                        <ShieldAlert className="h-4 w-4" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {alert.title}
+                      </p>
+                      <p className="mt-1 text-[12px] leading-relaxed text-slate-600">
+                        {alert.body}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ProfileCard>
+
+          <ProfileCard title="Milestones and Recognition">
+            <div className="space-y-3">
+              {athlete.achievements.map((item) => (
+                <div
+                  key={`${item.date}-${item.title}`}
+                  className="flex gap-4 rounded-2xl border border-border-subtle/60 bg-white p-4"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-gold-light text-brand-gold-hover">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold text-slate-900">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-[12px] text-slate-500">{item.date}</p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-slate-600">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ProfileCard>
+        </div>
       </div>
+    );
+  }, [activeTab, athlete, eventPage]);
+
+  return (
+    <div className="animate-in space-y-6 pb-24 fade-in slide-in-from-bottom-4 duration-500">
+      <div className="relative overflow-hidden rounded-[28px] border border-border-subtle/40 bg-surface-card p-6 shadow-soft sm:p-8">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-80 bg-gradient-to-l from-brand-blue/8 via-brand-blue/3 to-transparent" />
+
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="space-y-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start">
+              <img
+                src={athlete.imageUrl}
+                alt={athlete.name}
+                className="h-28 w-28 rounded-[26px] border-4 border-white object-cover shadow-soft"
+              />
+
+              <div className="min-w-0 flex-1 space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                    {athlete.name}
+                  </h1>
+                  <span
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${statusTone}`}
+                  >
+                    {athlete.status}
+                  </span>
+                </div>
+                <p className="text-[15px] font-medium text-brand-blue">
+                  {athlete.sport} | {athlete.event}
+                </p>
+                <p className="max-w-3xl text-[14px] leading-relaxed text-slate-600">
+                  {athlete.overview.summary}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <ProfileBadge icon={UserRound} label="Student ID" value={athlete.id} />
+              <ProfileBadge
+                icon={CalendarDays}
+                label="Year Level"
+                value={athlete.year}
+              />
+              <ProfileBadge
+                icon={TrendingUp}
+                label="Academic Standing"
+                value={athlete.standing}
+              />
+              <ProfileBadge icon={Clock3} label="Coach" value={athlete.coach} />
+            </div>
+          </div>
+
+          <aside className="rounded-[24px] border border-border-subtle/60 bg-slate-50/75 p-5 shadow-soft">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+              Profile Actions
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <button
+                type="button"
+                onClick={() => setModal({ type: "status" })}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Update Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("details")}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle/70 bg-white px-5 py-3 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-100"
+              >
+                <FileText className="h-4 w-4" />
+                Open Detailed Info
+              </button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div className="rounded-[28px] border border-border-subtle/40 bg-surface-card p-5 shadow-soft">
+        <div className="flex flex-col gap-4 border-b border-border-subtle/60 pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
+              Athlete Workspace
+            </p>
+            <h2 className="mt-2 text-[22px] font-bold tracking-tight text-slate-900">
+              {activeCopy.title}
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+              {activeCopy.description}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded-full px-4 py-2.5 text-[12px] font-bold tracking-wide transition-all ${
+                  activeTab === tab.id
+                    ? "bg-brand-blue text-white shadow-soft"
+                    : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-6">{currentTabContent}</div>
+      </div>
+
       <AthleteProfileModal modal={modal} onClose={closeModal} athlete={athlete} />
+    </div>
+  );
+}
+
+function ProfileCard({ title, action, children, className = "" }) {
+  return (
+    <section
+      className={`rounded-[24px] border border-border-subtle/50 bg-surface-card p-6 shadow-soft ${className}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <h3 className="text-[16px] font-bold text-slate-900">{title}</h3>
+        {action}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function ProfileBadge({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/85 p-4">
+      <div className="flex items-start gap-2 text-slate-400">
+        <Icon className="h-4 w-4" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] leading-[1.35]">
+          {label}
+        </p>
+      </div>
+      <p className="mt-3 text-[15px] font-semibold leading-snug text-slate-900">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DetailField({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-[14px] font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-blue-light text-brand-blue">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+          {label}
+        </p>
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-700">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function MetricTile({ label, value, hint, tone = "default" }) {
+  const toneClass =
+    tone === "blue"
+      ? "bg-brand-blue-light text-brand-blue"
+      : tone === "gold"
+        ? "bg-brand-gold-light text-brand-gold-hover"
+        : "bg-slate-100 text-slate-600";
+
+  return (
+    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2.5 text-[20px] font-extrabold tracking-tight text-slate-900">
+        {value}
+      </p>
+      <span className={`mt-2.5 inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${toneClass}`}>
+        {hint}
+      </span>
+    </div>
+  );
+}
+
+function StatusPill({ status }) {
+  const tone =
+    status === "In Possession"
+      ? "bg-green-50 text-green-700"
+      : status === "Overdue"
+        ? "bg-red-50 text-red-700"
+        : "bg-slate-100 text-slate-600";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function EventStatusPill({ value }) {
+  const tone =
+    value === "Completed"
+      ? "bg-green-50 text-green-700"
+      : value === "Upcoming"
+        ? "bg-brand-blue-light text-brand-blue"
+        : value === "Ongoing"
+          ? "bg-amber-50 text-amber-700"
+          : value === "Cancelled"
+            ? "bg-red-50 text-red-700"
+            : "bg-slate-100 text-slate-600";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function EventMiniStat({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1.5 text-[12px] font-semibold leading-snug text-slate-800">
+        {value}
+      </p>
     </div>
   );
 }

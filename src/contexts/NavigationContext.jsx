@@ -6,6 +6,7 @@ const NavigationContext = createContext();
 const viewRoutes = {
   dashboard: "/",
   athletes: "/athletes",
+  events: "/events",
   inventory: "/inventory",
   facilities: "/facilities",
   settings: "/settings",
