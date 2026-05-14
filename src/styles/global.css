@@ -217,6 +217,12 @@
         color: var(--color-brand-blue);
     }
 
+    .adnu-events-calendar .adnu-events-calendar__event--scheduled {
+        background: rgba(15, 58, 110, 0.10);
+        border-left-color: var(--color-brand-blue);
+        color: var(--color-brand-blue);
+    }
+
     .adnu-events-calendar .adnu-events-calendar__event--draft {
         background: rgba(148, 163, 184, 0.14);
         border-left-color: #64748b;

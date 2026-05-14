@@ -1,6 +1,7 @@
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { AthletesView } from "./features/athletes/AthletesView";
+import { CoachesView } from "./features/coaches/CoachesView";
 import { EventsView } from "./features/events/EventsView";
 import { InventoryHub } from "./features/inventory/InventoryHub";
 import { FacilitiesView } from "./features/facilities/FacilitiesView";
@@ -22,6 +23,7 @@ function AppContent() {
     <DashboardLayout>
       {currentView === "dashboard" && <Dashboard />}
       {currentView === "athletes" && <AthletesView />}
+      {currentView === "coaches" && <CoachesView />}
       {currentView === "events" && <EventsView />}
       {currentView === "inventory" && <InventoryHub />}
       {currentView === "facilities" && <FacilitiesView />}

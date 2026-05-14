@@ -9,7 +9,7 @@ export function Topbar() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-blue transition-colors" />
           <input
             type="text"
-            placeholder="Search athletes, facilities, or gear..."
+            placeholder="Search athletes, coaches, facilities, or gear..."
             className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-transparent focus:border-brand-blue/20 focus:shadow-soft rounded-full py-2.5 pl-11 pr-4 text-[13px] text-slate-700 transition-all outline-none placeholder:text-slate-400 font-medium"
           />
         </div>

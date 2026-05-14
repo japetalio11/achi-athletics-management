@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserRound,
   CalendarDays,
   Archive,
   Map,
@@ -16,6 +17,7 @@ export function Sidebar() {
   const navItems = [
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { id: "athletes", icon: Users, label: "Athletes" },
+    { id: "coaches", icon: UserRound, label: "Coaches" },
     { id: "events", icon: CalendarDays, label: "Events" },
     { id: "inventory", icon: Archive, label: "Inventory" },
     { id: "facilities", icon: Map, label: "Facilities" },

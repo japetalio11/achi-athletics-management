@@ -6,6 +6,7 @@ const NavigationContext = createContext();
 const viewRoutes = {
   dashboard: "/",
   athletes: "/athletes",
+  coaches: "/coaches",
   events: "/events",
   inventory: "/inventory",
   facilities: "/facilities",
@@ -37,12 +38,16 @@ function getViewFromHash() {
 export function NavigationProvider({ children }) {
   const [currentView, setCurrentView] = useState(getViewFromHash);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
+  const [selectedCoach, setSelectedCoach] = useState(null);
 
   const navigateTo = (view) => {
     setCurrentView(view);
     window.location.hash = viewRoutes[view] ?? "/";
     if (view !== "athletes") {
       setSelectedAthlete(null);
+    }
+    if (view !== "coaches") {
+      setSelectedCoach(null);
     }
   };
 
@@ -52,6 +57,9 @@ export function NavigationProvider({ children }) {
       setCurrentView(nextView);
       if (nextView !== "athletes") {
         setSelectedAthlete(null);
+      }
+      if (nextView !== "coaches") {
+        setSelectedCoach(null);
       }
     };
 
@@ -66,6 +74,8 @@ export function NavigationProvider({ children }) {
         navigateTo,
         selectedAthlete,
         setSelectedAthlete,
+        selectedCoach,
+        setSelectedCoach,
         isAuthView: authViews.has(currentView),
       }}
     >
