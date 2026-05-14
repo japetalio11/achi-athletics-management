@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardCopy,
   ListChecks,
+  MapPin,
   Megaphone,
   PencilLine,
   Plus,
@@ -15,6 +16,7 @@ import {
   Trash2,
   Trophy,
   UserPlus,
+  Users,
 } from "lucide-react";
 import {
   addMonths,
@@ -140,6 +142,17 @@ const resultBadgeClasses = {
 const visibilityBadgeClasses = {
   Private: "bg-slate-100 text-slate-600",
   Public: "bg-brand-blue-light text-brand-blue",
+};
+
+const eventVisuals = {
+  Basketball: { icon: Trophy, accentClass: "from-brand-blue via-slate-800 to-brand-blue-hover", eyebrow: "Court competition" },
+  Volleyball: { icon: Trophy, accentClass: "from-violet-700 to-brand-blue", eyebrow: "Match program" },
+  Football: { icon: Trophy, accentClass: "from-emerald-700 to-emerald-500", eyebrow: "Field event" },
+  "Track and Field": { icon: CalendarDays, accentClass: "from-orange-700 to-brand-gold-hover", eyebrow: "Race schedule" },
+  Swimming: { icon: CalendarDays, accentClass: "from-cyan-700 to-sky-500", eyebrow: "Aquatics meet" },
+  Tennis: { icon: Trophy, accentClass: "from-lime-700 to-emerald-500", eyebrow: "Bracket play" },
+  Badminton: { icon: Trophy, accentClass: "from-indigo-700 to-violet-500", eyebrow: "Court schedule" },
+  Other: { icon: ListChecks, accentClass: "from-slate-700 to-slate-900", eyebrow: "Program event" },
 };
 
 const participationBadgeClasses = {
@@ -1464,79 +1477,102 @@ function EventListPanel({
   onArchive,
 }) {
   return (
-    <section className="rounded-[24px] border border-border-subtle/50 bg-surface-card shadow-soft">
-      <div className="divide-y divide-border-subtle/60">
-        {events.length === 0 ? (
-          <div className="p-6">
-            <EmptyState title="No events match the filters" body="Adjust search or filters to broaden the list." />
-          </div>
-        ) : (
-          events.map((event) => (
-            <article key={event.id} className="px-5 py-4 transition-colors hover:bg-slate-50/60">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px_180px_150px] lg:items-center">
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+    <section>
+      {events.length === 0 ? (
+        <div className="rounded-[24px] border border-border-subtle/50 bg-surface-card p-6 shadow-soft">
+          <EmptyState title="No events match the filters" body="Adjust search or filters to broaden the list." />
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          {events.map((event) => {
+            const visual = getEventVisual(event);
+            const Icon = visual.icon;
+
+            return (
+              <article
+                key={event.id}
+                className="overflow-hidden rounded-[26px] border border-border-subtle/50 bg-surface-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float"
+              >
+                <div className={`relative h-64 w-full overflow-hidden bg-gradient-to-br ${visual.accentClass} p-6 text-white`}>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_42%),linear-gradient(140deg,transparent,rgba(255,255,255,0.08))]" />
+                  <div className="relative flex h-full flex-col justify-between">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="inline-flex rounded-full bg-white/18 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+                          {visual.eyebrow}
+                        </p>
+                        <p className="mt-3 text-[12px] font-semibold text-white/80">{event.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/14 text-white shadow-lg shadow-slate-950/10 backdrop-blur-sm">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        {canManageEvents ? (
+                          <EventActionsMenu
+                            event={event}
+                            open={openMenuId === event.id}
+                            onToggle={() =>
+                              setOpenMenuId((current) => (current === event.id ? null : event.id))
+                            }
+                            onClose={() => setOpenMenuId(null)}
+                            onOpenEdit={onOpenEdit}
+                            onOpenAssign={onOpenAssign}
+                            onOpenResults={onOpenResults}
+                            onPublish={onPublish}
+                            onUnpublish={onUnpublish}
+                            onDuplicate={onDuplicate}
+                            onCancel={onCancel}
+                            onArchive={onArchive}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => onOpenDetails(event)} className="block text-left">
+                      <h3 className="max-w-[18rem] line-clamp-2 text-[22px] font-bold tracking-tight">{event.title}</h3>
+                      <p className="mt-2 max-w-[22rem] line-clamp-3 text-sm leading-6 text-white/82">
+                        {event.publicDescription || event.description || `${event.sportCategory} ${event.type}`}
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-5 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge value={event.status} />
+                    <Badge value={event.type} className="bg-slate-100 text-slate-600" />
                     {event.resultStatus !== "Not Started" && (
                       <ResultStatusBadge value={event.resultStatus} />
                     )}
+                    {event.visibility === "Public" ? <VisibilityBadge value={event.visibility} /> : null}
                   </div>
-                  <h3 className="truncate text-[16px] font-bold text-slate-950">
-                    {event.title}
-                  </h3>
-                  <p className="mt-1 truncate text-[13px] text-slate-500">
-                    {event.sportCategory} | {event.type}
-                  </p>
-                </div>
 
-                <div className="text-[13px] text-slate-600">
-                  <p className="font-semibold text-slate-900">
-                    {formatEventDate(event.startDate, event.endDate)}
-                  </p>
-                  <p className="mt-1 text-slate-500">
-                    {formatEventTime(event.startTime, event.endTime)}
-                  </p>
-                </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <EventMeta icon={CalendarDays} label="Schedule" value={formatEventDate(event.startDate, event.endDate)} secondary={formatEventTime(event.startTime, event.endTime)} />
+                    <EventMeta icon={MapPin} label="Venue" value={event.venue} />
+                  </div>
 
-                <div className="min-w-0 text-[13px] text-slate-500">
-                  <p className="truncate">{event.venue}</p>
-                  <p className="mt-1 text-[12px]">
-                    {event.assignedAthletes.length}/{event.maxParticipants} athletes
-                  </p>
-                </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <EventMeta icon={Trophy} label="Sport / type" value={event.sportCategory} secondary={event.type} />
+                    <EventMeta icon={Users} label="Roster" value={`${event.assignedAthletes.length}/${event.maxParticipants}`} secondary="athletes assigned" />
+                  </div>
 
-                <div className="flex items-center gap-2 lg:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => onOpenDetails(event)}
-                    className="inline-flex items-center justify-center rounded-full bg-brand-blue px-4 py-2.5 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
-                  >
-                    View
-                  </button>
-                  {canManageEvents ? (
-                    <EventActionsMenu
-                      event={event}
-                      open={openMenuId === event.id}
-                      onToggle={() =>
-                        setOpenMenuId((current) => (current === event.id ? null : event.id))
-                      }
-                      onClose={() => setOpenMenuId(null)}
-                      onOpenEdit={onOpenEdit}
-                      onOpenAssign={onOpenAssign}
-                      onOpenResults={onOpenResults}
-                      onPublish={onPublish}
-                      onUnpublish={onUnpublish}
-                      onDuplicate={onDuplicate}
-                      onCancel={onCancel}
-                      onArchive={onArchive}
-                    />
-                  ) : null}
+                  <div className="rounded-[22px] border border-border-subtle/60 bg-slate-50/80 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Organizer</p>
+                    <p className="mt-2 text-[14px] font-bold text-slate-900">{event.organizer}</p>
+                    <p className="mt-1 text-[13px] leading-6 text-slate-500">
+                      {event.resultStatus === "Published"
+                        ? "Results are published for this event."
+                        : event.status === "Completed"
+                          ? "Event completed and ready for results review."
+                          : "Open the event to manage assignments, schedule, and updates."}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -1561,6 +1597,8 @@ function EventActionsMenu({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
+      iconOrientation="vertical"
+      buttonClassName="!border-0 !bg-white/14 !text-white/88 !shadow-none backdrop-blur-sm hover:!bg-white/18 hover:!text-white"
       items={[
         { label: "Edit Event", icon: PencilLine, onClick: () => onOpenEdit(event) },
         { label: "Assign Athletes", icon: UserPlus, onClick: () => onOpenAssign(event) },
@@ -1575,6 +1613,19 @@ function EventActionsMenu({
         { label: "Archive Event", icon: Archive, tone: "danger", onClick: () => onArchive(event) },
       ]}
     />
+  );
+}
+
+function EventMeta({ icon: Icon, label, value, secondary }) {
+  return (
+    <div className="rounded-[18px] border border-border-subtle/60 bg-slate-50/70 p-3">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <p className="mt-2 text-[13px] font-semibold leading-5 text-slate-800">{value}</p>
+      {secondary ? <p className="mt-1 text-[12px] leading-5 text-slate-500">{secondary}</p> : null}
+    </div>
   );
 }
 
@@ -3034,6 +3085,20 @@ function getAssignedProfiles(event) {
 function getCalendarEventClassName(event) {
   const statusClass = event.status.toLowerCase();
   return `adnu-event adnu-events-calendar__event adnu-events-calendar__event--${statusClass}`;
+}
+
+function getEventVisual(event) {
+  if (event.status === "Cancelled") {
+    return { icon: Archive, accentClass: "from-slate-700 to-slate-900", eyebrow: "Archived program" };
+  }
+  if (event.status === "Completed") {
+    return { icon: Trophy, accentClass: "from-emerald-700 to-emerald-500", eyebrow: "Completed event" };
+  }
+  if (event.status === "Ongoing") {
+    return { icon: CalendarDays, accentClass: "from-brand-gold-hover to-orange-600", eyebrow: "Live schedule" };
+  }
+
+  return eventVisuals[event.sportCategory] ?? eventVisuals.Other;
 }
 
 function eventOccursOnDate(event, date) {

@@ -34,6 +34,7 @@ function getViewFromHash() {
   const hashRoute = window.location.hash.replace(/^#/, "") || "/";
   if (hashRoute.startsWith("/events/")) return "events";
   if (hashRoute.startsWith("/inventory/")) return "inventory";
+  if (hashRoute.startsWith("/facilities/")) return "facilities";
   return routeViews[hashRoute] ?? "dashboard";
 }
 
@@ -49,12 +50,27 @@ function getInventoryItemFromHash() {
   return match ? { id: decodeURIComponent(match[1]), name: "Inventory Item", initialTab: "overview" } : null;
 }
 
+function getFacilityFromHash() {
+  const hashRoute = window.location.hash.replace(/^#/, "") || "/";
+  if (hashRoute.startsWith("/facilities/reservations/")) return null;
+  const match = hashRoute.match(/^\/facilities\/([^/]+)$/);
+  return match ? { id: decodeURIComponent(match[1]), name: "Facility Details", initialTab: "overview" } : null;
+}
+
+function getFacilityReservationFromHash() {
+  const hashRoute = window.location.hash.replace(/^#/, "") || "/";
+  const match = hashRoute.match(/^\/facilities\/reservations\/([^/]+)$/);
+  return match ? { id: decodeURIComponent(match[1]), name: "Reservation Details", initialTab: "overview" } : null;
+}
+
 export function NavigationProvider({ children }) {
   const [currentView, setCurrentView] = useState(getViewFromHash);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(getEventFromHash);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(getInventoryItemFromHash);
+  const [selectedFacility, setSelectedFacility] = useState(getFacilityFromHash);
+  const [selectedFacilityReservation, setSelectedFacilityReservation] = useState(getFacilityReservationFromHash);
 
   const navigateTo = (view) => {
     setCurrentView(view);
@@ -70,6 +86,10 @@ export function NavigationProvider({ children }) {
     }
     if (view !== "inventory") {
       setSelectedInventoryItem(null);
+    }
+    if (view !== "facilities") {
+      setSelectedFacility(null);
+      setSelectedFacilityReservation(null);
     }
   };
 
@@ -99,6 +119,40 @@ export function NavigationProvider({ children }) {
     window.location.hash = viewRoutes.inventory;
   };
 
+  const selectFacility = (facility, initialTab = "overview") => {
+    const nextFacility = { id: facility.id, name: facility.name ?? "Facility Details", initialTab };
+    setCurrentView("facilities");
+    setSelectedFacility(nextFacility);
+    setSelectedFacilityReservation(null);
+    window.location.hash = `/facilities/${encodeURIComponent(facility.id)}`;
+  };
+
+  const clearSelectedFacility = () => {
+    setSelectedFacility(null);
+    setSelectedFacilityReservation(null);
+    setCurrentView("facilities");
+    window.location.hash = viewRoutes.facilities;
+  };
+
+  const selectFacilityReservation = (reservation, initialTab = "overview") => {
+    const nextReservation = {
+      id: reservation.id,
+      name: reservation.activityName ?? reservation.purpose ?? "Reservation Details",
+      initialTab,
+    };
+    setCurrentView("facilities");
+    setSelectedFacilityReservation(nextReservation);
+    setSelectedFacility(null);
+    window.location.hash = `/facilities/reservations/${encodeURIComponent(reservation.id)}`;
+  };
+
+  const clearSelectedFacilityReservation = () => {
+    setSelectedFacilityReservation(null);
+    setSelectedFacility(null);
+    setCurrentView("facilities");
+    window.location.hash = viewRoutes.facilities;
+  };
+
   useEffect(() => {
     const handleHashChange = () => {
       const nextView = getViewFromHash();
@@ -118,6 +172,13 @@ export function NavigationProvider({ children }) {
         setSelectedInventoryItem(getInventoryItemFromHash());
       } else {
         setSelectedInventoryItem(null);
+      }
+      if (nextView === "facilities") {
+        setSelectedFacility(getFacilityFromHash());
+        setSelectedFacilityReservation(getFacilityReservationFromHash());
+      } else {
+        setSelectedFacility(null);
+        setSelectedFacilityReservation(null);
       }
     };
 
@@ -142,6 +203,14 @@ export function NavigationProvider({ children }) {
         setSelectedInventoryItem,
         selectInventoryItem,
         clearSelectedInventoryItem,
+        selectedFacility,
+        setSelectedFacility,
+        selectFacility,
+        clearSelectedFacility,
+        selectedFacilityReservation,
+        setSelectedFacilityReservation,
+        selectFacilityReservation,
+        clearSelectedFacilityReservation,
         isAuthView: authViews.has(currentView),
       }}
     >

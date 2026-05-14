@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, MoreVertical } from "lucide-react";
 
 export function ActionMenu({
   label,
@@ -8,8 +8,11 @@ export function ActionMenu({
   onToggle,
   onClose,
   widthClass = "w-56",
+  buttonClassName = "",
+  iconOrientation = "horizontal",
 }) {
   const rootRef = useRef(null);
+  const TriggerIcon = iconOrientation === "vertical" ? MoreVertical : MoreHorizontal;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -36,9 +39,9 @@ export function ActionMenu({
         aria-label={label}
         aria-expanded={open}
         onClick={onToggle}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle/60 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue"
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle/60 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue ${buttonClassName}`}
       >
-        <MoreHorizontal className="h-4 w-4" />
+        <TriggerIcon className="h-4 w-4" />
       </button>
       {open && (
         <div
