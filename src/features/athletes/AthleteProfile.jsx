@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Award,
@@ -77,6 +77,9 @@ export function AthleteProfile({ athlete }) {
   const [modal, setModal] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [eventPage, setEventPage] = useState(0);
+  const stickyHeaderRef = useRef(null);
+  const tabContentRef = useRef(null);
+  const shouldScrollToTabContentRef = useRef(false);
   const closeModal = () => setModal(null);
   const eventsPerPage = 3;
 
@@ -88,6 +91,43 @@ export function AthleteProfile({ athlete }) {
         : "bg-red-50 text-red-700";
 
   const activeCopy = tabCopy[activeTab];
+
+  useEffect(() => {
+    if (!shouldScrollToTabContentRef.current) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const stickyHeader = stickyHeaderRef.current;
+      const content = tabContentRef.current;
+      shouldScrollToTabContentRef.current = false;
+
+      if (!content) {
+        return;
+      }
+
+      const stickyOffset = stickyHeader
+        ? stickyHeader.getBoundingClientRect().height + 16
+        : 20;
+
+      scrollElementIntoViewIfNeeded(content, {
+        containerOffset: stickyOffset,
+        visibilityOffset: stickyOffset,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab]);
+
+  const handleTabChange = (tabId) => {
+    if (tabId === activeTab) {
+      return;
+    }
+
+    shouldScrollToTabContentRef.current = true;
+    setActiveTab(tabId);
+  };
+
   const currentTabContent = useMemo(() => {
     if (activeTab === "details") {
       return (
@@ -659,10 +699,7 @@ export function AthleteProfile({ athlete }) {
                   </span>
                 </div>
                 <p className="text-[15px] font-medium text-brand-blue">
-                  {athlete.sport} | {athlete.event}
-                </p>
-                <p className="max-w-3xl text-[14px] leading-relaxed text-slate-600">
-                  {athlete.overview.summary}
+                  {[athlete.sport, athlete.department].filter(Boolean).join(" | ")}
                 </p>
               </div>
             </div>
@@ -695,11 +732,11 @@ export function AthleteProfile({ athlete }) {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
               >
                 <ShieldCheck className="h-4 w-4" />
-                Update Status
+                Edit User
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("details")}
+                onClick={() => handleTabChange("details")}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle/70 bg-white px-5 py-3 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-100"
               >
                 <FileText className="h-4 w-4" />
@@ -711,37 +748,45 @@ export function AthleteProfile({ athlete }) {
       </div>
 
       <div className="rounded-[28px] border border-border-subtle/40 bg-surface-card p-5 shadow-soft">
-        <div className="flex flex-col gap-4 border-b border-border-subtle/60 pb-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
-              Athlete Workspace
-            </p>
-            <h2 className="mt-2 text-[22px] font-bold tracking-tight text-slate-900">
-              {activeCopy.title}
-            </h2>
-            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-              {activeCopy.description}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`rounded-full px-4 py-2.5 text-[12px] font-bold tracking-wide transition-all ${
-                  activeTab === tab.id
-                    ? "bg-brand-blue text-white shadow-soft"
-                    : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        <div
+          ref={stickyHeaderRef}
+          className="sticky top-0 z-20 -mx-5 border-b border-border-subtle/60 bg-surface-card/95 px-5 pb-5 pt-4 backdrop-blur-md"
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
+                Athlete Workspace
+              </p>
+              <h2 className="mt-2 text-[22px] font-bold tracking-tight text-slate-900">
+                {activeCopy.title}
+              </h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+                {activeCopy.description}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`rounded-full px-4 py-2.5 text-[12px] font-bold tracking-wide transition-all ${
+                    activeTab === tab.id
+                      ? "bg-brand-blue text-white shadow-soft"
+                      : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="pt-6">{currentTabContent}</div>
+        <div ref={tabContentRef} className="pt-6">
+          {currentTabContent}
+        </div>
       </div>
 
       <AthleteProfileModal modal={modal} onClose={closeModal} athlete={athlete} />
@@ -880,6 +925,66 @@ function EventMiniStat({ label, value }) {
   );
 }
 
+function scrollElementIntoViewIfNeeded(
+  element,
+  { containerOffset = 0, visibilityOffset = 0 } = {},
+) {
+  const scrollParent = getScrollParent(element);
+
+  if (scrollParent === window) {
+    const rect = element.getBoundingClientRect();
+    const visibleTop = visibilityOffset;
+    const visibleBottom = window.innerHeight - visibilityOffset;
+
+    if (rect.top >= visibleTop && rect.bottom <= visibleBottom) {
+      return;
+    }
+
+    const nextTop = window.scrollY + rect.top - containerOffset;
+    window.scrollTo({
+      top: Math.max(nextTop, 0),
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  const parentRect = scrollParent.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  const visibleTop = parentRect.top + visibilityOffset;
+  const visibleBottom = parentRect.bottom - visibilityOffset;
+
+  if (elementRect.top >= visibleTop && elementRect.bottom <= visibleBottom) {
+    return;
+  }
+
+  const nextTop =
+    scrollParent.scrollTop + (elementRect.top - parentRect.top) - containerOffset;
+
+  scrollParent.scrollTo({
+    top: Math.max(nextTop, 0),
+    behavior: "smooth",
+  });
+}
+
+function getScrollParent(element) {
+  let current = element.parentElement;
+
+  while (current) {
+    const { overflowY } = window.getComputedStyle(current);
+    const canScroll =
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      current.scrollHeight > current.clientHeight;
+
+    if (canScroll) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return window;
+}
+
 function AthleteProfileModal({ modal, onClose, athlete }) {
   if (!modal) return null;
 
@@ -895,8 +1000,8 @@ function AthleteProfileModal({ modal, onClose, athlete }) {
       <Modal
         open
         onClose={onClose}
-        title="Update Athlete Status"
-        description={`Adjust clearance and scholarship markers for ${athlete.name}.`}
+        title="Edit User"
+        description={`Update profile details and athlete settings for ${athlete.name}.`}
         footer={footer}
       >
         <div className="grid gap-4 sm:grid-cols-2">

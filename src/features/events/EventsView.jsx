@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import {
   ChevronLeft,
@@ -105,6 +105,8 @@ export function EventsView() {
   const [currentDate, setCurrentDate] = useState(parseISO(mockEvents[0].startDate));
   const [selectedDate, setSelectedDate] = useState(parseISO(mockEvents[0].startDate));
   const [selectedEventId, setSelectedEventId] = useState(mockEvents[0]?.id ?? null);
+  const selectedEventCardRef = useRef(null);
+  const shouldScrollToSelectedEventRef = useRef(false);
 
   const deferredSearch = useDeferredValue(filters.search);
 
@@ -191,6 +193,28 @@ export function EventsView() {
     selectedDayEvents[0] ??
     sortedFilteredEvents[0] ??
     null;
+
+  useEffect(() => {
+    if (!shouldScrollToSelectedEventRef.current || !selectedEvent) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const contentCard = selectedEventCardRef.current;
+      shouldScrollToSelectedEventRef.current = false;
+
+      if (!contentCard) {
+        return;
+      }
+
+      scrollElementIntoViewIfNeeded(contentCard, {
+        containerOffset: 20,
+        visibilityOffset: 28,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [selectedEvent]);
 
   const openCreateModal = () => {
     setModal({
@@ -478,6 +502,7 @@ export function EventsView() {
     setSelectedDate(today);
   };
   const handleCalendarSelectEvent = ({ resource }) => {
+    shouldScrollToSelectedEventRef.current = true;
     setSelectedEventId(resource.id);
     setSelectedDate(parseISO(resource.startDate));
   };
@@ -485,6 +510,7 @@ export function EventsView() {
     setSelectedDate(slotInfo.start);
   };
   const handleQueueSelect = (event) => {
+    shouldScrollToSelectedEventRef.current = true;
     setSelectedEventId(event.id);
     setSelectedDate(parseISO(event.startDate));
     setCurrentDate(parseISO(event.startDate));
@@ -646,7 +672,10 @@ export function EventsView() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-border-subtle/40 bg-surface-card p-6 shadow-soft">
+          <div
+            ref={selectedEventCardRef}
+            className="rounded-[24px] border border-border-subtle/40 bg-surface-card p-6 shadow-soft"
+          >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-[16px] font-bold text-slate-900">
@@ -1792,6 +1821,66 @@ function ActionCard({ icon: Icon, title, description, onClick }) {
       </p>
     </button>
   );
+}
+
+function scrollElementIntoViewIfNeeded(
+  element,
+  { containerOffset = 0, visibilityOffset = 0 } = {},
+) {
+  const scrollParent = getScrollParent(element);
+
+  if (scrollParent === window) {
+    const rect = element.getBoundingClientRect();
+    const visibleTop = visibilityOffset;
+    const visibleBottom = window.innerHeight - visibilityOffset;
+
+    if (rect.top >= visibleTop && rect.bottom <= visibleBottom) {
+      return;
+    }
+
+    const nextTop = window.scrollY + rect.top - containerOffset;
+    window.scrollTo({
+      top: Math.max(nextTop, 0),
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  const parentRect = scrollParent.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  const visibleTop = parentRect.top + visibilityOffset;
+  const visibleBottom = parentRect.bottom - visibilityOffset;
+
+  if (elementRect.top >= visibleTop && elementRect.bottom <= visibleBottom) {
+    return;
+  }
+
+  const nextTop =
+    scrollParent.scrollTop + (elementRect.top - parentRect.top) - containerOffset;
+
+  scrollParent.scrollTo({
+    top: Math.max(nextTop, 0),
+    behavior: "smooth",
+  });
+}
+
+function getScrollParent(element) {
+  let current = element.parentElement;
+
+  while (current) {
+    const { overflowY } = window.getComputedStyle(current);
+    const canScroll =
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      current.scrollHeight > current.clientHeight;
+
+    if (canScroll) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return window;
 }
 
 function getCalendarEventClassName(event) {
