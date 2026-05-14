@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useNavigation } from "../../contexts/NavigationContext";
 import { FeedbackPanel } from "../../components/ui/Modal";
 import { AthleteProfile } from "./AthleteProfile";
@@ -6,7 +7,9 @@ import { AthletesList } from "./AthletesList";
 import { mockAthletes } from "./athletesMockData";
 
 export function AthletesView() {
-  const { selectedAthlete, setSelectedAthlete } = useNavigation();
+  const navigate = useNavigate();
+  const { athleteId } = useParams();
+  const { selectedAthlete, setSelectedAthlete, clearSelectedAthlete } = useNavigation();
   const [athletes, setAthletes] = useState(mockAthletes);
   const [feedback, setFeedback] = useState(null);
 
@@ -21,6 +24,27 @@ export function AthletesView() {
     if (!selectedAthlete?.id) return null;
     return athletes.find((athlete) => athlete.id === selectedAthlete.id) ?? null;
   }, [athletes, selectedAthlete]);
+
+  useEffect(() => {
+    if (!athleteId || activeAthlete) return;
+    navigate("/not-found", { replace: true });
+  }, [activeAthlete, athleteId, navigate]);
+
+  useEffect(() => {
+    if (!activeAthlete || !selectedAthlete?.id) return;
+    if (
+      selectedAthlete.name === activeAthlete.name &&
+      selectedAthlete.initialTab
+    ) {
+      return;
+    }
+
+    setSelectedAthlete({
+      id: activeAthlete.id,
+      name: activeAthlete.name,
+      initialTab: selectedAthlete.initialTab ?? "overview",
+    });
+  }, [activeAthlete, selectedAthlete, setSelectedAthlete]);
 
   const showFeedback = (tone, title, message) => {
     setFeedback({ tone, title, message });
@@ -105,9 +129,10 @@ export function AthletesView() {
 
       {activeAthlete ? (
         <AthleteProfile
+          key={`${activeAthlete.id}:${selectedAthlete?.initialTab ?? "overview"}`}
           athlete={activeAthlete}
           initialTab={selectedAthlete?.initialTab}
-          onBack={() => setSelectedAthlete(null)}
+          onBack={clearSelectedAthlete}
           onSelectTab={(tabId) =>
             setSelectedAthlete({ id: activeAthlete.id, name: activeAthlete.name, initialTab: tabId })
           }

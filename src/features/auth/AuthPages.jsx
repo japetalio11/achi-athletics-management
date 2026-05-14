@@ -15,7 +15,8 @@ import {
   TextInput,
   inputClass,
 } from "../../components/ui/Modal";
-import { useNavigation } from "../../contexts/NavigationContext";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
 function PasswordInput({ value, onChange, placeholder = "Enter password" }) {
   const [visible, setVisible] = useState(false);
@@ -47,9 +48,14 @@ function AuthShell({ eyebrow, title, description, children, sideTitle, sideCopy 
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl overflow-hidden rounded-[28px] border border-border-subtle/70 bg-surface-card shadow-float lg:grid-cols-[0.95fr_1.05fr]">
         <section className="flex flex-col justify-between gap-10 bg-brand-blue p-8 text-white sm:p-10">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/80">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              ADNU Athletics
+            <div className="flex items-center justify-between gap-4">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                ADNU Athletics
+              </Link>
             </div>
             <div className="mt-16 max-w-md">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-gold">
@@ -82,6 +88,13 @@ function AuthShell({ eyebrow, title, description, children, sideTitle, sideCopy 
 
         <section className="flex items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-md">
+            <Link
+              to="/"
+              className="mb-5 inline-flex -translate-y-1 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-blue"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to landing page
+            </Link>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue">
               {eyebrow}
             </p>
@@ -100,24 +113,21 @@ function AuthShell({ eyebrow, title, description, children, sideTitle, sideCopy 
 }
 
 function AuthFooterLink({ prompt, label, view }) {
-  const { navigateTo } = useNavigation();
-
   return (
     <p className="mt-6 text-center text-[13px] text-slate-500">
       {prompt}{" "}
-      <button
-        type="button"
-        onClick={() => navigateTo(view)}
+      <Link
+        to={view}
         className="font-bold text-brand-blue hover:text-brand-blue-hover"
       >
         {label}
-      </button>
+      </Link>
     </p>
   );
 }
 
-function usePlaceholderSubmit(nextView) {
-  const { navigateTo } = useNavigation();
+function usePlaceholderSubmit(nextPath, onSuccess) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -133,7 +143,8 @@ function usePlaceholderSubmit(nextView) {
     setLoading(true);
     window.setTimeout(() => {
       setLoading(false);
-      if (nextView) navigateTo(nextView);
+      if (onSuccess) onSuccess();
+      if (nextPath) navigate(nextPath);
     }, 500);
   };
 
@@ -141,10 +152,15 @@ function usePlaceholderSubmit(nextView) {
 }
 
 export function LoginPage() {
-  const { navigateTo } = useNavigation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { loading, message, submit } = usePlaceholderSubmit("dashboard");
+  const nextPath = location.state?.from?.pathname ?? "/dashboard";
+  const { loading, message, submit } = usePlaceholderSubmit(nextPath, () =>
+    login({ email, role: "Administrator" }),
+  );
 
   return (
     <AuthShell
@@ -190,7 +206,7 @@ export function LoginPage() {
           </label>
           <button
             type="button"
-            onClick={() => navigateTo("forgot-password")}
+            onClick={() => navigate("/forgot-password")}
             className="font-bold text-brand-blue hover:text-brand-blue-hover"
           >
             Forgot password?
@@ -202,7 +218,7 @@ export function LoginPage() {
         </PrimaryButton>
       </form>
 
-      <AuthFooterLink prompt="New to the athletics hub?" label="Create an account" view="register" />
+      <AuthFooterLink prompt="New to the athletics hub?" label="Create an account" view="/register" />
     </AuthShell>
   );
 }
@@ -215,7 +231,7 @@ export function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
-  const { loading, message, submit } = usePlaceholderSubmit("verification-success");
+  const { loading, message, submit } = usePlaceholderSubmit("/verification-success");
 
   const update = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -279,14 +295,14 @@ export function RegisterPage() {
         </PrimaryButton>
       </form>
 
-      <AuthFooterLink prompt="Already have an account?" label="Sign in" view="login" />
+      <AuthFooterLink prompt="Already have an account?" label="Sign in" view="/login" />
     </AuthShell>
   );
 }
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const { loading, message, submit } = usePlaceholderSubmit("reset-password");
+  const { loading, message, submit } = usePlaceholderSubmit("/reset-password");
 
   return (
     <AuthShell
@@ -318,7 +334,7 @@ export function ForgotPasswordPage() {
         </PrimaryButton>
       </form>
 
-      <AuthFooterLink prompt="Remembered your password?" label="Back to sign in" view="login" />
+      <AuthFooterLink prompt="Remembered your password?" label="Back to sign in" view="/login" />
     </AuthShell>
   );
 }
@@ -326,7 +342,7 @@ export function ForgotPasswordPage() {
 export function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { loading, message, submit } = usePlaceholderSubmit("verification-success");
+  const { loading, message, submit } = usePlaceholderSubmit("/verification-success");
 
   return (
     <AuthShell
@@ -365,7 +381,8 @@ export function ResetPasswordPage() {
 }
 
 export function VerificationSuccessPage() {
-  const { navigateTo } = useNavigation();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const details = useMemo(
     () => [
       "Account request captured for director approval.",
@@ -400,12 +417,12 @@ export function VerificationSuccessPage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <PrimaryButton onClick={() => navigateTo("login")} className="flex-1 py-3">
+          <PrimaryButton onClick={() => navigate("/login")} className="flex-1 py-3">
             Go to sign in
           </PrimaryButton>
           <button
             type="button"
-            onClick={() => navigateTo("dashboard")}
+            onClick={() => navigate(isAuthenticated ? "/dashboard" : "/login")}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border-subtle bg-surface-card px-4 py-3 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-50"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { FeedbackPanel } from "../../components/ui/Modal";
 import { useNavigation } from "../../contexts/NavigationContext";
 import { CoachProfile } from "./CoachProfile";
@@ -6,7 +7,9 @@ import { CoachesList } from "./CoachesList";
 import { mockCoaches } from "./coachesMockData";
 
 export function CoachesView() {
-  const { selectedCoach, setSelectedCoach } = useNavigation();
+  const navigate = useNavigate();
+  const { coachId } = useParams();
+  const { selectedCoach, setSelectedCoach, clearSelectedCoach } = useNavigation();
   const [coaches, setCoaches] = useState(mockCoaches);
   const [feedback, setFeedback] = useState(null);
 
@@ -21,6 +24,24 @@ export function CoachesView() {
     if (!selectedCoach?.id) return null;
     return coaches.find((coach) => coach.id === selectedCoach.id) ?? null;
   }, [coaches, selectedCoach]);
+
+  useEffect(() => {
+    if (!coachId || activeCoach) return;
+    navigate("/not-found", { replace: true });
+  }, [activeCoach, coachId, navigate]);
+
+  useEffect(() => {
+    if (!activeCoach || !selectedCoach?.id) return;
+    if (selectedCoach.name === activeCoach.name && selectedCoach.initialTab) {
+      return;
+    }
+
+    setSelectedCoach({
+      id: activeCoach.id,
+      name: activeCoach.name,
+      initialTab: selectedCoach.initialTab ?? "overview",
+    });
+  }, [activeCoach, selectedCoach, setSelectedCoach]);
 
   const showFeedback = (tone, title, message) => {
     setFeedback({ tone, title, message });
@@ -100,10 +121,11 @@ export function CoachesView() {
 
       {activeCoach ? (
         <CoachProfile
+          key={`${activeCoach.id}:${selectedCoach?.initialTab ?? "overview"}`}
           coach={activeCoach}
           coaches={coaches}
           initialTab={selectedCoach?.initialTab}
-          onBack={() => setSelectedCoach(null)}
+          onBack={clearSelectedCoach}
           onSelectTab={(tabId) =>
             setSelectedCoach({ id: activeCoach.id, name: activeCoach.name, initialTab: tabId })
           }

@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import {
   Archive,
@@ -167,6 +168,8 @@ const participationBadgeClasses = {
 const resultVisibilityOptions = ["Internal Only", "Public"];
 
 export function EventsView() {
+  const navigate = useNavigate();
+  const { eventId } = useParams();
   const { selectedEvent, selectEvent, clearSelectedEvent, setSelectedEvent } = useNavigation();
   const [events, setEvents] = useState(mockEvents);
   const [activeView, setActiveView] = useState("list");
@@ -299,6 +302,24 @@ export function EventsView() {
   const activePageEvent = selectedEvent?.id
     ? events.find((event) => event.id === selectedEvent.id)
     : null;
+
+  useEffect(() => {
+    if (!eventId || activePageEvent) return;
+    navigate("/not-found", { replace: true });
+  }, [activePageEvent, eventId, navigate]);
+
+  useEffect(() => {
+    if (!activePageEvent || !selectedEvent?.id) return;
+    if (selectedEvent.name === activePageEvent.title && selectedEvent.initialTab) {
+      return;
+    }
+
+    setSelectedEvent({
+      id: activePageEvent.id,
+      name: activePageEvent.title,
+      initialTab: selectedEvent.initialTab ?? "overview",
+    });
+  }, [activePageEvent, selectedEvent, setSelectedEvent]);
 
   const summaryCards = useMemo(() => {
     const visibleEvents = events.filter((event) => !event.archived);

@@ -97,17 +97,10 @@ export function AthleteProfile({
   };
 
   const switchTab = (tabId) => {
+    setActiveOverflowMenuId(null);
     setActiveTab(tabId);
     onSelectTab?.(tabId);
   };
-
-  useEffect(() => {
-    setActiveOverflowMenuId(null);
-  }, [activeTab]);
-
-  useEffect(() => {
-    setActiveTab(initialTab || "overview");
-  }, [athlete.id, initialTab]);
 
   useEffect(() => {
     if (!tabSectionRef.current) return;

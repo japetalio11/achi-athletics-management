@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { FeedbackPanel } from "../../components/ui/Modal";
 import { useNavigation } from "../../contexts/NavigationContext";
 import {
@@ -15,14 +16,15 @@ import { defaultModalPayload } from "./inventoryModalPayload";
 import { deriveInventoryStatus, emptyInventoryForm, formatDate, todayIso } from "./inventoryTypes";
 
 export function InventoryHub() {
+  const navigate = useNavigate();
+  const { itemId } = useParams();
   const {
     selectedInventoryItem,
     setSelectedInventoryItem,
     selectInventoryItem,
     clearSelectedInventoryItem,
-    setSelectedAthlete,
-    setSelectedCoach,
-    navigateTo,
+    selectAthlete,
+    selectCoach,
   } = useNavigation();
   const [items, setItems] = useState(mockInventoryItems);
   const [modal, setModal] = useState(null);
@@ -39,6 +41,27 @@ export function InventoryHub() {
     if (!selectedInventoryItem?.id) return null;
     return items.find((item) => item.id === selectedInventoryItem.id) ?? null;
   }, [items, selectedInventoryItem]);
+
+  useEffect(() => {
+    if (!itemId || activeItem) return;
+    navigate("/not-found", { replace: true });
+  }, [activeItem, itemId, navigate]);
+
+  useEffect(() => {
+    if (!activeItem || !selectedInventoryItem?.id) return;
+    if (
+      selectedInventoryItem.name === activeItem.name &&
+      selectedInventoryItem.initialTab
+    ) {
+      return;
+    }
+
+    setSelectedInventoryItem({
+      id: activeItem.id,
+      name: activeItem.name,
+      initialTab: selectedInventoryItem.initialTab ?? "overview",
+    });
+  }, [activeItem, selectedInventoryItem, setSelectedInventoryItem]);
 
   const showFeedback = (tone, title, message) => {
     setFeedback({ tone, title, message });
@@ -540,13 +563,19 @@ export function InventoryHub() {
 
   const openPersonProfile = (assignment) => {
     if (assignment.assigneeType === "Athlete") {
-      setSelectedAthlete({ id: assignment.assigneeId, name: assignment.assigneeName, initialTab: "assets" });
-      navigateTo("athletes");
+      selectAthlete({
+        id: assignment.assigneeId,
+        name: assignment.assigneeName,
+        initialTab: "assets",
+      });
       return;
     }
     if (assignment.assigneeType === "Coach") {
-      setSelectedCoach({ id: assignment.assigneeId, name: assignment.assigneeName, initialTab: "overview" });
-      navigateTo("coaches");
+      selectCoach({
+        id: assignment.assigneeId,
+        name: assignment.assigneeName,
+        initialTab: "overview",
+      });
       return;
     }
     showFeedback("info", "Staff profile unavailable", "Staff directory routing can be connected when that module exists.");
@@ -582,7 +611,6 @@ export function InventoryHub() {
           items={items}
           onSelectItem={selectItem}
           onOpenModal={openModal}
-          onDuplicateItem={duplicateItem}
         />
       )}
 

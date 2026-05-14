@@ -1,17 +1,14 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Archive,
   Boxes,
   Camera,
   QrCode,
-  Copy,
   Download,
   Eye,
   Filter,
   History,
   ListChecks,
-  MapPin,
   Package,
   PencilLine,
   Plus,
@@ -20,7 +17,6 @@ import {
   Tags,
   Undo2,
   UserPlus,
-  Wrench,
   Trash2,
 } from "lucide-react";
 import { ActionMenu } from "../../components/ui/ActionMenu";
@@ -28,7 +24,6 @@ import { PrimaryButton, SecondaryButton } from "../../components/ui/Modal";
 import {
   defaultInventoryFilters,
   getAvailabilityLabel,
-  getConditionTone,
   getStatusTone,
   inventoryCategories,
   inventoryConditions,
@@ -47,13 +42,12 @@ export function InventoryList({
   items,
   onSelectItem,
   onOpenModal,
-  onDuplicateItem,
 }) {
   const [filters, setFilters] = useState(defaultInventoryFilters);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [activeView, setActiveView] = useState("list");
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setRequestedPage] = useState(1);
   const perPage = 5;
 
   const visibleItems = useMemo(() => {
@@ -124,11 +118,8 @@ export function InventoryList({
     [visibleItems],
   );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [visibleItems]);
-
   const totalPages = Math.max(1, Math.ceil(visibleItems.length / perPage));
+  const currentPage = Math.min(requestedPage, totalPages);
   const paginatedItems = visibleItems.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const summaryCards = useMemo(() => {
@@ -154,10 +145,14 @@ export function InventoryList({
   });
 
   const setFilter = (key, value) => {
+    setRequestedPage(1);
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
-  const resetFilters = () => setFilters(defaultInventoryFilters);
+  const resetFilters = () => {
+    setRequestedPage(1);
+    setFilters(defaultInventoryFilters);
+  };
 
   return (
     <div className="animate-in space-y-6 pb-24 fade-in slide-in-from-bottom-4 duration-500">
@@ -252,7 +247,10 @@ export function InventoryList({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveView(tab.id)}
+                  onClick={() => {
+                    setRequestedPage(1);
+                    setActiveView(tab.id);
+                  }}
                   className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-bold transition-colors ${
                     active ? "bg-brand-blue text-white shadow-soft" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                   }`}
@@ -338,12 +336,11 @@ export function InventoryList({
               totalCount={visibleItems.length}
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              onPageChange={setRequestedPage}
               openMenuId={openMenuId}
               setOpenMenuId={setOpenMenuId}
               onSelectItem={onSelectItem}
               onOpenModal={onOpenModal}
-              onDuplicateItem={onDuplicateItem}
               onResetFilters={resetFilters}
             />
           </div>
@@ -362,7 +359,6 @@ export function InventoryList({
           setOpenMenuId={setOpenMenuId}
           onSelectItem={onSelectItem}
           onOpenModal={onOpenModal}
-          onDuplicateItem={onDuplicateItem}
         />
       )}
 
@@ -389,7 +385,6 @@ function InventoryTable({
   setOpenMenuId,
   onSelectItem,
   onOpenModal,
-  onDuplicateItem,
   onResetFilters,
 }) {
   return (
@@ -429,7 +424,6 @@ function InventoryTable({
                   onClose={() => setOpenMenuId(null)}
                   onSelectItem={onSelectItem}
                   onOpenModal={onOpenModal}
-                  onDuplicateItem={onDuplicateItem}
                 />
               ))}
             </tbody>
@@ -486,7 +480,6 @@ function InventoryRow({
   onClose,
   onSelectItem,
   onOpenModal,
-  onDuplicateItem,
 }) {
   return (
       <tr className="group cursor-pointer transition-colors hover:bg-slate-50/50" onClick={() => onSelectItem(item)}>
@@ -519,7 +512,6 @@ function InventoryRow({
               onClose={onClose}
               onSelectItem={onSelectItem}
               onOpenModal={onOpenModal}
-              onDuplicateItem={onDuplicateItem}
             />
           </div>
         </td>
@@ -533,7 +525,6 @@ function CategoriesView({
   setOpenMenuId,
   onSelectItem,
   onOpenModal,
-  onDuplicateItem,
 }) {
   const groups = inventoryCategories
     .map((category) => ({
@@ -577,7 +568,6 @@ function CategoriesView({
                     onClose={() => setOpenMenuId(null)}
                     onSelectItem={onSelectItem}
                     onOpenModal={onOpenModal}
-                    onDuplicateItem={onDuplicateItem}
                   />
                 </div>
               </article>
@@ -666,10 +656,7 @@ function InventoryActionMenu({
   onClose,
   onSelectItem,
   onOpenModal,
-  onDuplicateItem,
 }) {
-  const hasActiveAssignment = item.assignments.some((assignment) => assignment.status === "Active");
-
   return (
     <ActionMenu
       label={`Actions for ${item.name}`}
@@ -781,18 +768,12 @@ function LiveTransactions({ assignments, items, onViewAll }) {
     .slice(0, 6);
 
   const timeAgo = (dateStr) => {
-    try {
-      if (!dateStr) return "Just now";
-      const d = new Date(dateStr);
-      const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-      if (isNaN(diff)) return new Date(dateStr).toLocaleDateString();
-      if (diff < 60) return "Just now";
-      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-      return d.toLocaleDateString();
-    } catch (e) {
-      return dateStr || "";
-    }
+    if (!dateStr) return "Just now";
+
+    const parsed = new Date(dateStr);
+    if (Number.isNaN(parsed.getTime())) return dateStr;
+
+    return parsed.toLocaleDateString();
   };
 
   return (

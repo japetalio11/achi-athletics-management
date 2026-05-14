@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { FeedbackPanel } from "../../components/ui/Modal";
 import { useNavigation } from "../../contexts/NavigationContext";
 import { FacilityInfoPage } from "./FacilityInfoPage";
@@ -24,6 +25,8 @@ import {
 } from "./facilityTypes";
 
 export function FacilitiesView() {
+  const navigate = useNavigate();
+  const { facilityId, reservationId } = useParams();
   const {
     selectedFacility,
     setSelectedFacility,
@@ -60,6 +63,50 @@ export function FacilitiesView() {
     if (!activeReservation?.facilityId) return null;
     return facilities.find((facility) => facility.id === activeReservation.facilityId) ?? null;
   }, [activeReservation, facilities]);
+
+  useEffect(() => {
+    if (reservationId && !activeReservation) {
+      navigate("/not-found", { replace: true });
+      return;
+    }
+
+    if (facilityId && !reservationId && !activeFacility) {
+      navigate("/not-found", { replace: true });
+    }
+  }, [activeFacility, activeReservation, facilityId, navigate, reservationId]);
+
+  useEffect(() => {
+    if (!activeFacility || !selectedFacility?.id) return;
+    if (selectedFacility.name === activeFacility.name && selectedFacility.initialTab) {
+      return;
+    }
+
+    setSelectedFacility({
+      id: activeFacility.id,
+      name: activeFacility.name,
+      initialTab: selectedFacility.initialTab ?? "overview",
+    });
+  }, [activeFacility, selectedFacility, setSelectedFacility]);
+
+  useEffect(() => {
+    if (!activeReservation || !selectedFacilityReservation?.id) return;
+    if (
+      selectedFacilityReservation.name === activeReservation.activityName &&
+      selectedFacilityReservation.initialTab
+    ) {
+      return;
+    }
+
+    setSelectedFacilityReservation({
+      id: activeReservation.id,
+      name: activeReservation.activityName,
+      initialTab: selectedFacilityReservation.initialTab ?? "overview",
+    });
+  }, [
+    activeReservation,
+    selectedFacilityReservation,
+    setSelectedFacilityReservation,
+  ]);
 
   const showFeedback = (tone, title, message) => setFeedback({ tone, title, message });
   const closeModal = () => setModal(null);

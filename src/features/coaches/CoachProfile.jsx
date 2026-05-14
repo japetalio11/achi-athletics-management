@@ -114,17 +114,10 @@ export function CoachProfile({
   const notes = coach.notes ?? [];
 
   const switchTab = (tabId) => {
+    setActiveOverflowMenuId(null);
     setActiveTab(tabId);
     onSelectTab?.(tabId);
   };
-
-  useEffect(() => {
-    setActiveTab(initialTab || "overview");
-  }, [coach.id, initialTab]);
-
-  useEffect(() => {
-    setActiveOverflowMenuId(null);
-  }, [activeTab]);
 
   useEffect(() => {
     if (!tabSectionRef.current) return;
