@@ -9,7 +9,7 @@ import { mockAthletes } from "./athletesMockData";
 export function AthletesView() {
   const navigate = useNavigate();
   const { athleteId } = useParams();
-  const { selectedAthlete, setSelectedAthlete, clearSelectedAthlete } = useNavigation();
+  const { selectedAthlete, setSelectedAthlete, returnToAthletes } = useNavigation();
   const [athletes, setAthletes] = useState(mockAthletes);
   const [feedback, setFeedback] = useState(null);
 
@@ -132,7 +132,7 @@ export function AthletesView() {
           key={`${activeAthlete.id}:${selectedAthlete?.initialTab ?? "overview"}`}
           athlete={activeAthlete}
           initialTab={selectedAthlete?.initialTab}
-          onBack={clearSelectedAthlete}
+          onBack={returnToAthletes}
           onSelectTab={(tabId) =>
             setSelectedAthlete({ id: activeAthlete.id, name: activeAthlete.name, initialTab: tabId })
           }

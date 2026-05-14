@@ -71,6 +71,7 @@ export function NavigationProvider({ children }) {
   const location = useLocation();
   const { pathname } = location;
   const currentView = getCurrentView(pathname);
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
   const [athleteMeta, setAthleteMeta] = useState(() =>
     buildRouteSelection(window.location.pathname, "/athletes", "Athlete Details"),
@@ -165,8 +166,10 @@ export function NavigationProvider({ children }) {
     };
 
     setAthleteMeta(normalized);
-    navigate(`/athletes/${encodeURIComponent(nextAthlete.id)}`);
-  }, [navigate, selectedAthlete]);
+    navigate(`/athletes/${encodeURIComponent(nextAthlete.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedAthlete]);
 
   const setSelectedCoach = useCallback((nextCoach) => {
     if (!nextCoach?.id) {
@@ -182,8 +185,10 @@ export function NavigationProvider({ children }) {
     };
 
     setCoachMeta(normalized);
-    navigate(`/coaches/${encodeURIComponent(nextCoach.id)}`);
-  }, [navigate, selectedCoach]);
+    navigate(`/coaches/${encodeURIComponent(nextCoach.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedCoach]);
 
   const setSelectedEvent = useCallback((nextEvent) => {
     if (!nextEvent?.id) {
@@ -199,8 +204,10 @@ export function NavigationProvider({ children }) {
     };
 
     setEventMeta(normalized);
-    navigate(`/events/${encodeURIComponent(nextEvent.id)}`);
-  }, [navigate, selectedEvent]);
+    navigate(`/events/${encodeURIComponent(nextEvent.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedEvent]);
 
   const setSelectedInventoryItem = useCallback((nextItem) => {
     if (!nextItem?.id) {
@@ -217,8 +224,10 @@ export function NavigationProvider({ children }) {
     };
 
     setInventoryMeta(normalized);
-    navigate(`/inventory/${encodeURIComponent(nextItem.id)}`);
-  }, [navigate, selectedInventoryItem]);
+    navigate(`/inventory/${encodeURIComponent(nextItem.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedInventoryItem]);
 
   const setSelectedFacility = useCallback((nextFacility) => {
     if (!nextFacility?.id) {
@@ -235,8 +244,10 @@ export function NavigationProvider({ children }) {
 
     setFacilityReservationMeta(null);
     setFacilityMeta(normalized);
-    navigate(`/facilities/${encodeURIComponent(nextFacility.id)}`);
-  }, [navigate, selectedFacility]);
+    navigate(`/facilities/${encodeURIComponent(nextFacility.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedFacility]);
 
   const setSelectedFacilityReservation = useCallback((nextReservation) => {
     if (!nextReservation?.id) {
@@ -259,8 +270,18 @@ export function NavigationProvider({ children }) {
 
     setFacilityMeta(null);
     setFacilityReservationMeta(normalized);
-    navigate(`/facilities/reservations/${encodeURIComponent(nextReservation.id)}`);
-  }, [navigate, selectedFacilityReservation]);
+    navigate(`/facilities/reservations/${encodeURIComponent(nextReservation.id)}`, {
+      state: { from: currentPath },
+    });
+  }, [currentPath, navigate, selectedFacilityReservation]);
+
+  const returnToPreviousRoute = useCallback(
+    (fallbackView) => {
+      const fallbackPath = viewRoutes[fallbackView] ?? "/";
+      navigate(location.state?.from ?? fallbackPath, { replace: true });
+    },
+    [location.state, navigate],
+  );
 
   const value = useMemo(
     () => ({
@@ -270,26 +291,32 @@ export function NavigationProvider({ children }) {
       setSelectedAthlete,
       selectAthlete: setSelectedAthlete,
       clearSelectedAthlete: () => setSelectedAthlete(null),
+      returnToAthletes: () => returnToPreviousRoute("athletes"),
       selectedCoach,
       setSelectedCoach,
       selectCoach: setSelectedCoach,
       clearSelectedCoach: () => setSelectedCoach(null),
+      returnToCoaches: () => returnToPreviousRoute("coaches"),
       selectedEvent,
       setSelectedEvent,
       selectEvent: setSelectedEvent,
       clearSelectedEvent: () => setSelectedEvent(null),
+      returnToEvents: () => returnToPreviousRoute("events"),
       selectedInventoryItem,
       setSelectedInventoryItem,
       selectInventoryItem: setSelectedInventoryItem,
       clearSelectedInventoryItem: () => setSelectedInventoryItem(null),
+      returnToInventory: () => returnToPreviousRoute("inventory"),
       selectedFacility,
       setSelectedFacility,
       selectFacility: setSelectedFacility,
       clearSelectedFacility: () => setSelectedFacility(null),
+      returnToFacilities: () => returnToPreviousRoute("facilities"),
       selectedFacilityReservation,
       setSelectedFacilityReservation,
       selectFacilityReservation: setSelectedFacilityReservation,
       clearSelectedFacilityReservation: () => setSelectedFacilityReservation(null),
+      returnToFacilityReservations: () => returnToPreviousRoute("facilities"),
       isAuthView: authViews.has(currentView),
     }),
     [
@@ -301,6 +328,7 @@ export function NavigationProvider({ children }) {
       selectedFacility,
       selectedFacilityReservation,
       selectedInventoryItem,
+      returnToPreviousRoute,
       setSelectedAthlete,
       setSelectedCoach,
       setSelectedEvent,

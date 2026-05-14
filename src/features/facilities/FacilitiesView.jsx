@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FeedbackPanel } from "../../components/ui/Modal";
 import { useNavigation } from "../../contexts/NavigationContext";
@@ -31,11 +31,11 @@ export function FacilitiesView() {
     selectedFacility,
     setSelectedFacility,
     selectFacility,
-    clearSelectedFacility,
+    returnToFacilities,
     selectedFacilityReservation,
     setSelectedFacilityReservation,
     selectFacilityReservation,
-    clearSelectedFacilityReservation,
+    returnToFacilityReservations,
   } = useNavigation();
   const [facilities, setFacilities] = useState(mockFacilities);
   const [reservations, setReservations] = useState(mockReservations);
@@ -107,6 +107,19 @@ export function FacilitiesView() {
     selectedFacilityReservation,
     setSelectedFacilityReservation,
   ]);
+
+  useLayoutEffect(() => {
+    if (!selectedFacility && !selectedFacilityReservation) return;
+
+    window.requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector("main.overflow-y-auto");
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, [selectedFacility?.id, selectedFacilityReservation?.id]);
 
   const showFeedback = (tone, title, message) => setFeedback({ tone, title, message });
   const closeModal = () => setModal(null);
@@ -492,7 +505,7 @@ export function FacilitiesView() {
           reservation={activeReservation}
           facility={activeReservationFacility}
           initialTab={selectedFacilityReservation.initialTab}
-          onBack={clearSelectedFacilityReservation}
+          onBack={returnToFacilityReservations}
           onSelectTab={(tabId) =>
             activeReservation &&
             setSelectedFacilityReservation({
@@ -530,7 +543,7 @@ export function FacilitiesView() {
           reservations={reservations}
           canManageFacilities={canManageFacilities}
           initialTab={selectedFacility.initialTab}
-          onBack={clearSelectedFacility}
+          onBack={returnToFacilities}
           onSelectTab={(tabId) =>
             activeFacility &&
             setSelectedFacility({

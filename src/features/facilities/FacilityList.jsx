@@ -445,9 +445,23 @@ function FacilitiesGrid({
           const visual = getFacilityVisual(facility, availability);
           const Icon = visual.icon;
           const menuId = `facility-${facility.id}`;
+          const openFacilityDetails = () => onSelectFacility(facility);
+          const handleCardKeyDown = (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+
+            event.preventDefault();
+            openFacilityDetails();
+          };
 
           return (
-            <article key={facility.id} className="overflow-hidden rounded-[26px] border border-border-subtle/50 bg-surface-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float">
+            <article
+              key={facility.id}
+              role="button"
+              tabIndex={0}
+              onClick={openFacilityDetails}
+              onKeyDown={handleCardKeyDown}
+              className="overflow-hidden rounded-[26px] border border-border-subtle/50 bg-surface-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+            >
               <div className={`relative h-64 w-full overflow-hidden bg-gradient-to-br ${visual.accentClass} p-6 text-white`}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_42%),linear-gradient(140deg,transparent,rgba(255,255,255,0.08))]" />
                 <div className="relative flex h-full flex-col justify-between">
@@ -483,7 +497,14 @@ function FacilitiesGrid({
                       />
                     </div>
                   </div>
-                  <button type="button" onClick={() => onSelectFacility(facility)} className="block text-left">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openFacilityDetails();
+                    }}
+                    className="block text-left"
+                  >
                     <h2 className="max-w-[18rem] line-clamp-2 text-[22px] font-bold tracking-tight">{facility.name}</h2>
                     <p className="mt-2 max-w-[22rem] line-clamp-3 text-sm leading-6 text-white/82">
                       {facility.rulesSummary || facility.description}

@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import {
@@ -170,7 +170,7 @@ const resultVisibilityOptions = ["Internal Only", "Public"];
 export function EventsView() {
   const navigate = useNavigate();
   const { eventId } = useParams();
-  const { selectedEvent, selectEvent, clearSelectedEvent, setSelectedEvent } = useNavigation();
+  const { selectedEvent, selectEvent, returnToEvents, setSelectedEvent } = useNavigation();
   const [events, setEvents] = useState(mockEvents);
   const [activeView, setActiveView] = useState("list");
   const [filters, setFilters] = useState(defaultFilters);
@@ -320,6 +320,19 @@ export function EventsView() {
       initialTab: selectedEvent.initialTab ?? "overview",
     });
   }, [activePageEvent, selectedEvent, setSelectedEvent]);
+
+  useLayoutEffect(() => {
+    if (!activePageEvent) return;
+
+    window.requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector("main.overflow-y-auto");
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, [activePageEvent?.id]);
 
   const summaryCards = useMemo(() => {
     const visibleEvents = events.filter((event) => !event.archived);
@@ -912,7 +925,7 @@ export function EventsView() {
           event={activePageEvent}
           initialTab={selectedEvent.initialTab}
           canManageEvents={canManageEvents}
-          onBack={clearSelectedEvent}
+          onBack={returnToEvents}
           onSelectTab={(tabId) =>
             activePageEvent &&
             setSelectedEvent({ id: activePageEvent.id, name: activePageEvent.title, initialTab: tabId })
@@ -1508,11 +1521,22 @@ function EventListPanel({
           {events.map((event) => {
             const visual = getEventVisual(event);
             const Icon = visual.icon;
+            const openEventDetails = () => onOpenDetails(event);
+            const handleCardKeyDown = (keyboardEvent) => {
+              if (keyboardEvent.key !== "Enter" && keyboardEvent.key !== " ") return;
+
+              keyboardEvent.preventDefault();
+              openEventDetails();
+            };
 
             return (
               <article
                 key={event.id}
-                className="overflow-hidden rounded-[26px] border border-border-subtle/50 bg-surface-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float"
+                role="button"
+                tabIndex={0}
+                onClick={openEventDetails}
+                onKeyDown={handleCardKeyDown}
+                className="overflow-hidden rounded-[26px] border border-border-subtle/50 bg-surface-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
               >
                 <div className={`relative h-64 w-full overflow-hidden bg-gradient-to-br ${visual.accentClass} p-6 text-white`}>
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_42%),linear-gradient(140deg,transparent,rgba(255,255,255,0.08))]" />
@@ -1548,7 +1572,7 @@ function EventListPanel({
                         ) : null}
                       </div>
                     </div>
-                    <button type="button" onClick={() => onOpenDetails(event)} className="block text-left">
+                    <button type="button" onClick={openEventDetails} className="block text-left">
                       <h3 className="max-w-[18rem] line-clamp-2 text-[22px] font-bold tracking-tight">{event.title}</h3>
                       <p className="mt-2 max-w-[22rem] line-clamp-3 text-sm leading-6 text-white/82">
                         {event.publicDescription || event.description || `${event.sportCategory} ${event.type}`}

@@ -22,7 +22,7 @@ export function InventoryHub() {
     selectedInventoryItem,
     setSelectedInventoryItem,
     selectInventoryItem,
-    clearSelectedInventoryItem,
+    returnToInventory,
     selectAthlete,
     selectCoach,
   } = useNavigation();
@@ -593,7 +593,7 @@ export function InventoryHub() {
         <InventoryItemInfoPage
           item={activeItem}
           initialTab={selectedInventoryItem.initialTab}
-          onBack={clearSelectedInventoryItem}
+          onBack={returnToInventory}
           onSelectTab={(tabId) =>
             activeItem &&
             setSelectedInventoryItem({
