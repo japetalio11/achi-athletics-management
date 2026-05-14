@@ -1,971 +1,277 @@
-import { useState } from "react";
-import { Filter, Plus, Search } from "lucide-react";
-import { useNavigation } from "../../contexts/NavigationContext";
+import { useMemo, useState } from "react";
+import {
+  Archive,
+  FileText,
+  Filter,
+  MoreHorizontal,
+  Package,
+  PencilLine,
+  Plus,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import {
   Field,
+  FeedbackPanel,
   Modal,
   PrimaryButton,
   SecondaryButton,
   SelectInput,
+  TextArea,
   TextInput,
 } from "../../components/ui/Modal";
+import {
+  academicStandings,
+  athleteStatuses,
+  createAthleteFromForm,
+  scholarshipTypes,
+  sports,
+  yearLevels,
+} from "./athletesMockData";
 
-const mockAthletes = [
-  {
-    id: "#2021-08422",
-    name: "Sarah Jenkins",
-    sport: "Track & Field",
-    department: "Department of Computer Studies",
-    event: "400m Hurdles",
-    standing: "Deans List",
-    status: "Cleared",
-    coach: "Marcus Thorne",
-    year: "Junior Year",
-    scholarship: "Full Scholarship",
-    gpa: 3.85,
-    imageUrl: "https://i.pravatar.cc/150?u=a042581f4e290260241",
-    personal: {
-      birthdate: "May 18, 2003",
-      age: "22 years old",
-      gender: "Female",
-      nationality: "Filipino",
-      height: "170 cm",
-      weight: "60 kg",
-      bloodType: "O+",
-      side: "Right lead leg",
-      guardianTag: "Parent Consent Updated",
-    },
-    contact: {
-      phone: "+63 917 555 0188",
-      email: "sarah.jenkins@adnu.edu.ph",
-      address: "Unit 4, Loyola Heights, Quezon City",
-      emergency: {
-        name: "Martha Jenkins",
-        relationship: "Mother",
-        phone: "+63 917 555 0141",
-      },
-    },
-    overview: {
-      summary:
-        "High-priority sprint athlete preparing for regional qualifiers with strong academic standing and stable medical clearance.",
-      eligibility: "Fully eligible",
-      eligibilityNote: "Cleared for all meets",
-      trainingLoad: "High volume",
-      trainingNote: "Tempo and hurdle phase",
-      documentStatus: "4 active records",
-      documentNote: "Medical file expires in June",
-      nextReview: "May 20, 2026",
-      reviewOwner: "Coach and physio",
-      alerts: [
-        {
-          title: "Achilles monitoring",
-          body:
-            "Left Achilles soreness is under observation after back-to-back hurdle sessions.",
-          level: "attention",
-        },
-        {
-          title: "Qualifier preparation",
-          body:
-            "The coaching team is tapering volume this week to sharpen race-day execution.",
-          level: "good",
-        },
-      ],
-    },
-    eventsParticipation: {
-      summary: {
-        total: "8",
-        completed: "5",
-        upcoming: "2",
-        attendance: "96%",
-      },
-      items: [
-        {
-          title: "Regional Hurdles Qualifier",
-          type: "Competition",
-          date: "May 9, 2026",
-          venue: "University Oval Track",
-          status: "Completed",
-          attendance: "Present",
-          result: "1st Place",
-          coach: "Marcus Thorne",
-          summary: "",
-          metrics: ["54.2 sec", "Reaction +0.11", "PB achieved"],
-        },
-        {
-          title: "Sprint Mechanics Block",
-          type: "Training",
-          date: "May 14, 2026",
-          venue: "Performance Track Lab",
-          status: "Ongoing",
-          attendance: "Present",
-          result: "In progress",
-          coach: "Marcus Thorne",
-          summary: "",
-          metrics: ["12 hurdle reps", "8.5/10 readiness", "Low strain"],
-        },
-        {
-          title: "National University Athletics Meet",
-          type: "Competition",
-          date: "May 28, 2026",
-          venue: "Metro Athletics Complex",
-          status: "Upcoming",
-          attendance: "Scheduled",
-          result: "Pending",
-          coach: "Marcus Thorne",
-          summary:
-            "Final target event of the month with Sarah seeded among the top hurdle athletes in the region.",
-          metrics: ["Seed #2", "Travel cleared", "Race heat pending"],
-        },
-      ],
-      notes: [
-        {
-          title: "Competition planning",
-          date: "May 13, 2026",
-          description:
-            "Coaching staff approved reduced class travel conflict after reviewing qualifier and national meet timelines.",
-        },
-        {
-          title: "Attendance highlight",
-          date: "May 7, 2026",
-          description:
-            "Perfect attendance recorded across the last five structured sessions, including strength and track work.",
-        },
-      ],
-      roles: ["Starter", "Heat leader", "Relay reserve"],
-    },
-    history: [
-      {
-        date: "2023 Season",
-        title: "Transferred into elite sprint pool",
-        description:
-          "Moved from general athletics into the focused hurdles group after breaking the internal 400m benchmark.",
-        tag: "Program",
-      },
-      {
-        date: "November 2024",
-        title: "Qualified for national university meet",
-        description:
-          "Earned direct qualification after posting a season-best time during conference finals.",
-        tag: "Competition",
-      },
-      {
-        date: "February 2026",
-        title: "Strength block completed",
-        description:
-          "Closed six-week force-development cycle with measurable improvements in start power and hurdle rhythm.",
-        tag: "Training",
-      },
-      {
-        date: "April 2026",
-        title: "Sports science review",
-        description:
-          "Biomechanics review recommended ankle mobility work and more conservative recovery spacing.",
-        tag: "Health",
-      },
-    ],
-    achievements: [
-      {
-        title: "School Record Watchlist",
-        date: "2026 Outdoor Season",
-        description:
-          "Within 0.6 seconds of the current school record in the 400m hurdles.",
-      },
-      {
-        title: "Academic Merit Recognition",
-        date: "1st Semester 2025-2026",
-        description:
-          "Recognized by the college dean for maintaining above 3.8 GPA during active competition.",
-      },
-    ],
-    academics: {
-      gpaTrend: "+0.18 from last term",
-      attendance: "96%",
-      attendanceNote: "No missed labs this term",
-      units: "21 units",
-      term: "2nd Semester 2025-2026",
-      eligibility: "Competition eligible",
-      eligibilityNote: "No compliance holds",
-      trend: [
-        { label: "S1 '24", value: 68, score: "3.42", active: false },
-        { label: "S2 '24", value: 73, score: "3.56", active: false },
-        { label: "S1 '25", value: 82, score: "3.71", active: false },
-        { label: "Current", value: 94, score: "3.85", active: true },
-      ],
-      currentSubjects: [
-        { name: "Sports Psychology", grade: "A-", schedule: "MWF 10:00 AM" },
-        { name: "Statistics", grade: "A", schedule: "TTH 1:30 PM" },
-        { name: "Media Writing", grade: "B+", schedule: "MWF 2:00 PM" },
-        { name: "Exercise Physiology", grade: "A", schedule: "TTH 8:00 AM" },
-      ],
-      notes: [
-        {
-          title: "Adviser note",
-          owner: "Prof. Elaine Cruz",
-          body:
-            "Sarah remains highly responsive to guided planning and is ahead on major academic requirements.",
-        },
-        {
-          title: "Study support",
-          owner: "Athlete Services",
-          body:
-            "Maintain current tutoring rhythm during travel weeks to avoid compression before exams.",
-        },
-      ],
-    },
-    performanceMetrics: [
-      {
-        label: "Sprint Performance",
-        value: "54.2",
-        subLabel: "400m hurdles (sec)",
-        note: "Personal best with 0.4 second improvement",
-        progress: 82,
-        icon: "activity",
-        tone: "blue",
-      },
-      {
-        label: "Strength (Squat)",
-        value: "115 kg",
-        subLabel: "Current max load",
-        note: "Target is 125 kg before regional meet",
-        progress: 91,
-        icon: "strength",
-        tone: "gold",
-      },
-      {
-        label: "Wellness Score",
-        value: "92/100",
-        subLabel: "Optimal readiness",
-        note: "Sleep and soreness logs are both trending positive",
-        progress: 92,
-        icon: "heart",
-        tone: "dark",
-      },
-    ],
-    health: {
-      recoveryNote:
-        "Sarah is progressing well through hurdle rhythm work. Continue cryotherapy after intense track days and protect the left Achilles with low-impact recovery on Thursdays.",
-      updatedBy: "Head Coach Marcus Thorne",
-      updatedAt: "Updated 4 hours ago",
-      sleep: "8.5 hrs",
-      hydration: "3.1 L",
-      readiness: "High",
-      trainingFocus: [
-        "Hurdle clearance timing",
-        "Achilles load management",
-        "Sprint finish mechanics",
-      ],
-      medicalHistory: [
-        {
-          date: "April 29, 2026",
-          title: "Physio follow-up",
-          description:
-            "Mild tendon irritation remains manageable. Continue eccentric calf work and post-session mobility.",
-        },
-        {
-          date: "March 12, 2026",
-          title: "Routine sports medical",
-          description:
-            "Full clearance retained with no restrictions for competition participation.",
-        },
-      ],
-    },
-    documents: [
-      {
-        name: "Scholarship_Agreement.pdf",
-        meta: "Signed Oct 12, 2025 | 2.4 MB",
-        kind: "pdf",
-      },
-      {
-        name: "Medical_Clearance_2026.docx",
-        meta: "Expires Jun 20, 2026 | 1.1 MB",
-        kind: "doc",
-      },
-      {
-        name: "Athlete_ID_Scan.png",
-        meta: "Verified identity file | 850 KB",
-        kind: "image",
-      },
-      {
-        name: "Regional_Qualifier_Form.pdf",
-        meta: "Submitted last week | 640 KB",
-        kind: "pdf",
-      },
-    ],
-    equipmentHistory: [
-      {
-        name: "Nike Air Zoom Victory",
-        serial: "#TK-8912",
-        issuedDate: "Nov 02, 2025",
-        dueDate: "Mar 15, 2026",
-        status: "In Possession",
-        icon: "shoe",
-      },
-      {
-        name: "Resistance Band Set (L4)",
-        serial: "#TR-440",
-        issuedDate: "Oct 15, 2025",
-        dueDate: "Oct 30, 2025",
-        status: "Returned",
-        icon: "strength",
-      },
-      {
-        name: "Polar H10 Heart Monitor",
-        serial: "#SN-90221",
-        issuedDate: "Apr 28, 2026",
-        dueDate: "May 12, 2026",
-        status: "Overdue",
-        icon: "monitor",
-      },
-    ],
-  },
-  {
-    id: "#2022-09114",
-    name: "Marcus Santos",
-    sport: "Basketball",
-    department: "Department of Business Management",
-    event: "Point Guard",
-    standing: "Good",
-    status: "Injured",
-    coach: "David Reyes",
-    year: "Sophomore Year",
-    scholarship: "Partial Scholarship",
-    gpa: 3.2,
-    imageUrl: "https://i.pravatar.cc/150?u=a042581f4e290260242",
-    personal: {
-      birthdate: "September 3, 2004",
-      age: "21 years old",
-      gender: "Male",
-      nationality: "Filipino",
-      height: "182 cm",
-      weight: "77 kg",
-      bloodType: "A+",
-      side: "Right hand dominant",
-      guardianTag: "Guardian Confirmed",
-    },
-    contact: {
-      phone: "+63 917 555 0226",
-      email: "marcus.santos@adnu.edu.ph",
-      address: "Magsaysay Avenue, Naga City",
-      emergency: {
-        name: "Roberto Santos",
-        relationship: "Father",
-        phone: "+63 917 555 0208",
-      },
-    },
-    overview: {
-      summary:
-        "Floor general currently in rehab rotation after a minor ankle sprain, with close coordination between coaching and sports medicine.",
-      eligibility: "Conditionally active",
-      eligibilityNote: "Awaiting final return-to-play signoff",
-      trainingLoad: "Modified",
-      trainingNote: "Non-contact sessions only",
-      documentStatus: "3 active records",
-      documentNote: "Rehab notes updated weekly",
-      nextReview: "May 18, 2026",
-      reviewOwner: "Team physician",
-      alerts: [
-        {
-          title: "Return-to-play phase",
-          body:
-            "Marcus is on a progressive movement plan and should remain out of full-contact drills for now.",
-          level: "attention",
-        },
-        {
-          title: "Leadership role retained",
-          body:
-            "Still leading film breakdown and half-court organization during team practice meetings.",
-          level: "good",
-        },
-      ],
-    },
-    eventsParticipation: {
-      summary: {
-        total: "7",
-        completed: "4",
-        upcoming: "1",
-        attendance: "91%",
-      },
-      items: [
-        {
-          title: "Backcourt Tactical Film Review",
-          type: "Team Meeting",
-          date: "May 11, 2026",
-          venue: "Basketball War Room",
-          status: "Completed",
-          attendance: "Present",
-          result: "Led review",
-          coach: "David Reyes",
-          summary:
-            "Marcus led the point-guard film breakdown while remaining on restricted court participation.",
-          metrics: ["3 scouting clips", "2 player briefings", "Full attendance"],
-        },
-        {
-          title: "Guard Return-to-Play Session",
-          type: "Training",
-          date: "May 14, 2026",
-          venue: "Main Gym Court B",
-          status: "Ongoing",
-          attendance: "Present",
-          result: "Modified reps",
-          coach: "David Reyes",
-          summary:
-            "Participating in controlled non-contact movement and half-court decision drills as part of rehab progression.",
-          metrics: ["18 mins load", "No swelling", "75% speed cap"],
-        },
-        {
-          title: "Pre-Season Basketball Combine",
-          type: "Fitness Test",
-          date: "May 18, 2026",
-          venue: "Main Gym Performance Lab",
-          status: "Upcoming",
-          attendance: "Confirmed",
-          result: "Pending",
-          coach: "David Reyes",
-          summary:
-            "Expected to complete selected performance tests if final ankle clearance is maintained through the weekend.",
-          metrics: ["Clearance pending", "Jump tests limited", "Medical review"],
-        },
-      ],
-      notes: [
-        {
-          title: "Rehab participation rule",
-          date: "May 12, 2026",
-          description:
-            "Marcus may attend all tactical sessions but must stay on controlled minutes for physical training events.",
-        },
-        {
-          title: "Leadership assignment",
-          date: "May 6, 2026",
-          description:
-            "Assigned to support first-year guards during film review and half-court walkthroughs while out of contact drills.",
-        },
-      ],
-      roles: ["Point guard", "Film lead", "Backcourt captain"],
-    },
-    history: [
-      {
-        date: "2024 Season",
-        title: "Promoted to starting point guard",
-        description:
-          "Took over the starting role after showing consistent decision-making and defensive pressure.",
-        tag: "Roster",
-      },
-      {
-        date: "January 2026",
-        title: "Ankle sprain sustained",
-        description:
-          "Rolled right ankle during transition defense and began supervised rehab three days later.",
-        tag: "Health",
-      },
-      {
-        date: "March 2026",
-        title: "Film-room captain assignment",
-        description:
-          "Asked to lead opponent scouting breakdowns for the backcourt unit during recovery period.",
-        tag: "Leadership",
-      },
-      {
-        date: "May 2026",
-        title: "On-court movement progression",
-        description:
-          "Returned to change-of-direction drills with no swelling after controlled practice loads.",
-        tag: "Rehab",
-      },
-    ],
-    achievements: [
-      {
-        title: "Assist-to-turnover leader",
-        date: "2025 University League",
-        description:
-          "Finished with the best assist-to-turnover ratio on the team among all rotation players.",
-      },
-      {
-        title: "Coach's Leadership Citation",
-        date: "2025-2026 Midyear Review",
-        description:
-          "Recognized for accountability, communication, and mentoring first-year guards.",
-      },
-    ],
-    academics: {
-      gpaTrend: "+0.05 from last term",
-      attendance: "93%",
-      attendanceNote: "Excused rehab travel only",
-      units: "19 units",
-      term: "2nd Semester 2025-2026",
-      eligibility: "Eligible with monitoring",
-      eligibilityNote: "Needs to maintain attendance above 90%",
-      trend: [
-        { label: "S1 '24", value: 58, score: "2.94", active: false },
-        { label: "S2 '24", value: 63, score: "3.05", active: false },
-        { label: "S1 '25", value: 72, score: "3.16", active: false },
-        { label: "Current", value: 80, score: "3.20", active: true },
-      ],
-      currentSubjects: [
-        { name: "Marketing", grade: "B+", schedule: "MWF 9:00 AM" },
-        { name: "Human Kinetics", grade: "A-", schedule: "TTH 10:30 AM" },
-        { name: "Business Ethics", grade: "B", schedule: "MWF 1:00 PM" },
-        { name: "Coaching Theory", grade: "A-", schedule: "TTH 3:00 PM" },
-      ],
-      notes: [
-        {
-          title: "Faculty note",
-          owner: "Prof. Miguel De Leon",
-          body:
-            "Marcus remains engaged in class discussion, though he benefits from earlier submission pacing during travel weeks.",
-        },
-        {
-          title: "Support action",
-          owner: "Academic Services",
-          body:
-            "Continue weekly study hall while he is away from full practice to protect consistency.",
-        },
-      ],
-    },
-    performanceMetrics: [
-      {
-        label: "Assist Rate",
-        value: "8.4",
-        subLabel: "Per game average",
-        note: "Top playmaker on the roster this term",
-        progress: 84,
-        icon: "activity",
-        tone: "blue",
-      },
-      {
-        label: "Lower Body Strength",
-        value: "140 kg",
-        subLabel: "Trap bar max",
-        note: "Maintained despite limited court work",
-        progress: 88,
-        icon: "strength",
-        tone: "gold",
-      },
-      {
-        label: "Recovery Index",
-        value: "79/100",
-        subLabel: "Moderate readiness",
-        note: "Ankle soreness still present after intense lateral work",
-        progress: 79,
-        icon: "heart",
-        tone: "dark",
-      },
-    ],
-    health: {
-      recoveryNote:
-        "Marcus is transitioning from isolated rehab into non-contact team integration. Prioritize lateral stability, ankle stiffness reduction, and movement confidence before clearance.",
-      updatedBy: "Dr. Andrea Velasco",
-      updatedAt: "Updated yesterday",
-      sleep: "7.4 hrs",
-      hydration: "2.7 L",
-      readiness: "Moderate",
-      trainingFocus: [
-        "Ankle stability",
-        "Deceleration control",
-        "Half-court decision pace",
-      ],
-      medicalHistory: [
-        {
-          date: "May 10, 2026",
-          title: "Functional movement check",
-          description:
-            "Passed single-leg loading test with only mild post-session soreness and no swelling.",
-        },
-        {
-          date: "January 21, 2026",
-          title: "Initial ankle assessment",
-          description:
-            "Grade 1 lateral ankle sprain with no fracture signs. Began restricted rehab protocol.",
-        },
-      ],
-    },
-    documents: [
-      {
-        name: "Rehab_Clearance_Update.pdf",
-        meta: "Uploaded May 11, 2026 | 980 KB",
-        kind: "pdf",
-      },
-      {
-        name: "Scholarship_Renewal.docx",
-        meta: "Reviewed Feb 2026 | 1.6 MB",
-        kind: "doc",
-      },
-      {
-        name: "ID_Backup_Image.png",
-        meta: "Identity archive | 700 KB",
-        kind: "image",
-      },
-    ],
-    equipmentHistory: [
-      {
-        name: "Ankle Brace Set",
-        serial: "#BB-7719",
-        issuedDate: "Jan 24, 2026",
-        dueDate: "Jun 01, 2026",
-        status: "In Possession",
-        icon: "monitor",
-      },
-      {
-        name: "Team Warmup Kit",
-        serial: "#BB-4402",
-        issuedDate: "Aug 14, 2025",
-        dueDate: "Apr 01, 2026",
-        status: "Returned",
-        icon: "shoe",
-      },
-      {
-        name: "Tablet Film Unit",
-        serial: "#BB-1022",
-        issuedDate: "Apr 05, 2026",
-        dueDate: "May 05, 2026",
-        status: "Overdue",
-        icon: "monitor",
-      },
-    ],
-  },
-  {
-    id: "#2020-04192",
-    name: "Elena Rodriguez",
-    sport: "Volleyball",
-    department: "Department of Communication",
-    event: "Libero",
-    standing: "Probation",
-    status: "Pending Review",
-    coach: "Sarah Lim",
-    year: "Senior Year",
-    scholarship: "Walk-on",
-    gpa: 2.1,
-    imageUrl: "https://i.pravatar.cc/150?u=a042581f4e290260243",
-    personal: {
-      birthdate: "December 12, 2002",
-      age: "23 years old",
-      gender: "Female",
-      nationality: "Filipino",
-      height: "165 cm",
-      weight: "58 kg",
-      bloodType: "B+",
-      side: "Right hand dominant",
-      guardianTag: "Review Required",
-    },
-    contact: {
-      phone: "+63 917 555 0314",
-      email: "elena.rodriguez@adnu.edu.ph",
-      address: "Pacol Road, Naga City",
-      emergency: {
-        name: "Lourdes Rodriguez",
-        relationship: "Aunt",
-        phone: "+63 917 555 0301",
-      },
-    },
-    overview: {
-      summary:
-        "Senior libero balancing final-year eligibility concerns with academic recovery and document renewal requirements.",
-      eligibility: "At risk",
-      eligibilityNote: "Pending compliance review",
-      trainingLoad: "Controlled",
-      trainingNote: "Practice volume trimmed during finals",
-      documentStatus: "2 records expiring",
-      documentNote: "Medical and scholarship files need updates",
-      nextReview: "May 16, 2026",
-      reviewOwner: "Compliance office",
-      alerts: [
-        {
-          title: "Academic intervention active",
-          body:
-            "Elena has mandatory tutoring and weekly faculty check-ins until grades stabilize.",
-          level: "attention",
-        },
-        {
-          title: "Roster value remains strong",
-          body:
-            "Defensive communication and serve-receive coverage remain important to the current unit.",
-          level: "good",
-        },
-      ],
-    },
-    eventsParticipation: {
-      summary: {
-        total: "6",
-        completed: "3",
-        upcoming: "1",
-        attendance: "87%",
-      },
-      items: [
-        {
-          title: "Women's Volleyball Tactical Session",
-          type: "Training",
-          date: "May 14, 2026",
-          venue: "Fr. Godofredo Alingal Gym",
-          status: "Ongoing",
-          attendance: "Present",
-          result: "2nd unit libero",
-          coach: "Sarah Lim",
-          summary:
-            "Elena is active in reception and communication drills, though workload is being watched during finals week.",
-          metrics: ["86% receive", "Low jump load", "Full walkthrough"],
-        },
-        {
-          title: "Captain's Wellness Seminar",
-          type: "Seminar",
-          date: "May 12, 2026",
-          venue: "Athletics Conference Hall",
-          status: "Cancelled",
-          attendance: "Excused",
-          result: "Session cancelled",
-          coach: "Sarah Lim",
-          summary:
-            "Originally intended as a leadership and wellness seminar, but the session was cancelled due to a speaker issue.",
-          metrics: ["No session", "Reschedule pending", "Excused"],
-        },
-        {
-          title: "Conference Defensive Tune-Up",
-          type: "Competition",
-          date: "May 21, 2026",
-          venue: "City Sports Center",
-          status: "Upcoming",
-          attendance: "Assigned",
-          result: "Pending",
-          coach: "Sarah Lim",
-          summary:
-            "Projected to participate in a reduced but important defensive role if compliance documents are completed on time.",
-          metrics: ["Roster pending", "Doc review", "Travel hold"],
-        },
-      ],
-      notes: [
-        {
-          title: "Attendance concern",
-          date: "May 8, 2026",
-          description:
-            "Elena missed one optional walkthrough during exam pressure week and must maintain stronger participation consistency.",
-        },
-        {
-          title: "Role adjustment",
-          date: "May 2, 2026",
-          description:
-            "Coaches trimmed non-essential reps to help balance academic recovery with event readiness.",
-        },
-      ],
-      roles: ["Libero", "Serve receive anchor", "Defensive specialist"],
-    },
-    history: [
-      {
-        date: "2022 Season",
-        title: "Earned starting libero minutes",
-        description:
-          "Secured consistent match rotation after major growth in floor coverage and passing control.",
-        tag: "Roster",
-      },
-      {
-        date: "August 2025",
-        title: "Placed on academic watch",
-        description:
-          "Entered monitored status after a difficult travel-heavy term affected assignment completion.",
-        tag: "Academics",
-      },
-      {
-        date: "January 2026",
-        title: "Renewed athlete services plan",
-        description:
-          "Committed to tutoring support, attendance checks, and reduced extracurricular load.",
-        tag: "Support",
-      },
-      {
-        date: "April 2026",
-        title: "Compliance document reminder",
-        description:
-          "Medical renewal and eligibility paperwork were flagged for urgent completion.",
-        tag: "Admin",
-      },
-    ],
-    achievements: [
-      {
-        title: "Best Receiver of the Match",
-        date: "Conference Round 2, 2025",
-        description:
-          "Recorded the cleanest first-ball platform grade on the team during the match win.",
-      },
-      {
-        title: "Community Sports Volunteer",
-        date: "2025 Offseason",
-        description:
-          "Served as a volunteer mentor for youth volleyball clinics in the city program.",
-      },
-    ],
-    academics: {
-      gpaTrend: "-0.22 from last term",
-      attendance: "88%",
-      attendanceNote: "Needs immediate improvement",
-      units: "18 units",
-      term: "2nd Semester 2025-2026",
-      eligibility: "Probationary",
-      eligibilityNote: "Final review after grading period",
-      trend: [
-        { label: "S1 '24", value: 66, score: "3.12", active: false },
-        { label: "S2 '24", value: 60, score: "2.90", active: false },
-        { label: "S1 '25", value: 54, score: "2.54", active: false },
-        { label: "Current", value: 48, score: "2.10", active: true },
-      ],
-      currentSubjects: [
-        { name: "Research Methods", grade: "C+", schedule: "MWF 8:00 AM" },
-        { name: "Organizational Comm", grade: "B-", schedule: "TTH 11:00 AM" },
-        { name: "Internship Prep", grade: "C", schedule: "MWF 3:00 PM" },
-        { name: "Wellness Studies", grade: "B", schedule: "TTH 2:00 PM" },
-      ],
-      notes: [
-        {
-          title: "Academic probation note",
-          owner: "Registrar Compliance",
-          body:
-            "Elena must complete all missing submissions and sustain weekly attendance above minimum threshold.",
-        },
-        {
-          title: "Tutoring plan",
-          owner: "Athlete Services",
-          body:
-            "Recommended two guided writing sessions per week and direct course check-ins every Friday.",
-        },
-      ],
-    },
-    performanceMetrics: [
-      {
-        label: "Serve Receive Rating",
-        value: "7.8",
-        subLabel: "Team average scale",
-        note: "Still one of the best passers in the back row unit",
-        progress: 78,
-        icon: "activity",
-        tone: "blue",
-      },
-      {
-        label: "Lower Body Strength",
-        value: "82 kg",
-        subLabel: "Front squat max",
-        note: "Maintained despite reduced lifting during exam month",
-        progress: 72,
-        icon: "strength",
-        tone: "gold",
-      },
-      {
-        label: "Wellness Score",
-        value: "74/100",
-        subLabel: "Needs rest support",
-        note: "Stress and sleep consistency are lowering readiness",
-        progress: 74,
-        icon: "heart",
-        tone: "dark",
-      },
-    ],
-    health: {
-      recoveryNote:
-        "No acute injury is present, but Elena is showing accumulated fatigue. Protect recovery during finals and reinforce sleep and nutrition habits while keeping match-readiness stable.",
-      updatedBy: "Coach Sarah Lim",
-      updatedAt: "Updated 7 hours ago",
-      sleep: "6.3 hrs",
-      hydration: "2.1 L",
-      readiness: "Watch",
-      trainingFocus: [
-        "Serve receive consistency",
-        "Recovery routines",
-        "Stress management",
-      ],
-      medicalHistory: [
-        {
-          date: "May 5, 2026",
-          title: "Wellness check",
-          description:
-            "No injury restriction, but athlete reported elevated fatigue and inconsistent sleep during exams.",
-        },
-        {
-          date: "February 18, 2026",
-          title: "Shoulder maintenance consult",
-          description:
-            "Minor shoulder tightness resolved through mobility work with no participation limits.",
-        },
-      ],
-    },
-    documents: [
-      {
-        name: "Eligibility_Review_Request.pdf",
-        meta: "Submitted for review | 730 KB",
-        kind: "pdf",
-      },
-      {
-        name: "Medical_Renewal_Form.docx",
-        meta: "Pending physician signature | 1.0 MB",
-        kind: "doc",
-      },
-      {
-        name: "Athlete_ID_Archive.png",
-        meta: "Old backup image | 690 KB",
-        kind: "image",
-      },
-    ],
-    equipmentHistory: [
-      {
-        name: "Knee Pad Set",
-        serial: "#VB-2341",
-        issuedDate: "Aug 10, 2025",
-        dueDate: "Jun 10, 2026",
-        status: "In Possession",
-        icon: "shoe",
-      },
-      {
-        name: "Recovery Compression Boots",
-        serial: "#VB-8810",
-        issuedDate: "Apr 22, 2026",
-        dueDate: "May 08, 2026",
-        status: "Overdue",
-        icon: "monitor",
-      },
-      {
-        name: "Training Jersey Set",
-        serial: "#VB-1004",
-        issuedDate: "Aug 10, 2025",
-        dueDate: "Apr 02, 2026",
-        status: "Returned",
-        icon: "strength",
-      },
-    ],
-  },
-];
+const defaultFilters = {
+  search: "",
+  sport: "All sports",
+  status: "All statuses",
+  year: "All years",
+  standing: "All standings",
+  coach: "All coaches",
+  sort: "Recently updated",
+};
 
-export function AthletesList() {
-  const { setSelectedAthlete } = useNavigation();
+const emptyAthleteForm = {
+  name: "",
+  id: "",
+  sport: sports[0],
+  event: "",
+  coach: "",
+  status: "Cleared",
+  scholarship: "Walk-on",
+  department: "",
+  course: "",
+  year: yearLevels[0],
+  standing: "Good",
+  gpa: "",
+  attendance: "",
+  units: "",
+  academicEligibility: "Pending review",
+  email: "",
+  phone: "",
+  address: "",
+  emergencyName: "",
+  emergencyRelationship: "",
+  emergencyPhone: "",
+  birthdate: "",
+  age: "",
+  gender: "",
+  nationality: "Filipino",
+  height: "",
+  weight: "",
+  bloodType: "",
+  side: "",
+  summary: "",
+};
+
+export function AthletesList({
+  athletes,
+  onSelectAthlete,
+  onAddAthlete,
+  onUpdateAthlete,
+  onAddNote,
+  onArchiveAthlete,
+}) {
+  const [filters, setFilters] = useState(defaultFilters);
   const [modal, setModal] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const coaches = useMemo(
+    () => ["All coaches", ...new Set(athletes.map((athlete) => athlete.coach).filter(Boolean))],
+    [athletes],
+  );
+
+  const filteredAthletes = useMemo(() => {
+    const searchValue = filters.search.trim().toLowerCase();
+
+    const visible = athletes.filter((athlete) => {
+      const searchableText = [
+        athlete.name,
+        athlete.id,
+        athlete.sport,
+        athlete.event,
+        athlete.course,
+        athlete.department,
+        athlete.status,
+        athlete.coach,
+        athlete.year,
+        athlete.standing,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const matchesSearch = !searchValue || searchableText.includes(searchValue);
+      const matchesSport = filters.sport === "All sports" || athlete.sport === filters.sport;
+      const matchesStatus =
+        filters.status === "All statuses" || athlete.status === filters.status;
+      const matchesYear = filters.year === "All years" || athlete.year === filters.year;
+      const matchesStanding =
+        filters.standing === "All standings" || athlete.standing === filters.standing;
+      const matchesCoach = filters.coach === "All coaches" || athlete.coach === filters.coach;
+
+      return (
+        matchesSearch &&
+        matchesSport &&
+        matchesStatus &&
+        matchesYear &&
+        matchesStanding &&
+        matchesCoach
+      );
+    });
+
+    return visible.sort((left, right) => {
+      if (filters.sort === "Name") return left.name.localeCompare(right.name);
+      if (filters.sort === "Sport") return left.sport.localeCompare(right.sport);
+      if (filters.sort === "Year level") return left.year.localeCompare(right.year);
+      if (filters.sort === "Status") return left.status.localeCompare(right.status);
+      return new Date(right.updatedAt ?? 0) - new Date(left.updatedAt ?? 0);
+    });
+  }, [athletes, filters]);
+
+  const activeFilterEntries = Object.entries(filters).filter(([key, value]) => {
+    if (key === "search") return Boolean(value.trim());
+    return value !== defaultFilters[key];
+  });
+
+  const setFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
 
   const closeModal = () => setModal(null);
 
+  const openAddForm = () => setModal({ type: "form", mode: "add", values: emptyAthleteForm, errors: {} });
+
+  const openEditForm = (athlete) =>
+    setModal({
+      type: "form",
+      mode: "edit",
+      athleteId: athlete.id,
+      values: athleteToForm(athlete),
+      errors: {},
+    });
+
+  const saveAthlete = () => {
+    if (modal?.type !== "form") return;
+
+    const errors = validateAthleteForm(modal.values);
+    if (Object.keys(errors).length > 0) {
+      setModal((current) => ({ ...current, errors }));
+      return;
+    }
+
+    if (modal.mode === "add") {
+      onAddAthlete(createAthleteFromForm(modal.values));
+    } else {
+      onUpdateAthlete(
+        modal.athleteId,
+        (athlete) => mergeAthleteForm(athlete, modal.values),
+        {
+          title: "Athlete updated",
+          message: "Roster and profile details were updated locally.",
+        },
+      );
+    }
+
+    closeModal();
+  };
+
+  const saveNote = () => {
+    if (modal?.type !== "note") return;
+    const note = modal.value.trim();
+
+    if (!note) {
+      setModal((current) => ({ ...current, error: "Add a short note before saving." }));
+      return;
+    }
+
+    onAddNote(modal.athlete.id, `${new Date().toLocaleDateString()} - ${note}`);
+    closeModal();
+  };
+
+  const saveStatus = () => {
+    if (modal?.type !== "status") return;
+
+    onUpdateAthlete(
+      modal.athlete.id,
+      {
+        status: modal.status,
+        scholarship: modal.scholarship,
+        overview: {
+          ...modal.athlete.overview,
+          recentActivity: [
+            `${new Date().toLocaleDateString()} - Status changed to ${modal.status}. ${modal.note}`.trim(),
+            ...(modal.athlete.overview.recentActivity ?? []),
+          ],
+        },
+      },
+      {
+        title: "Status updated",
+        message: `${modal.athlete.name} now shows ${modal.status}.`,
+      },
+    );
+    closeModal();
+  };
+
+  const confirmArchive = () => {
+    if (modal?.type !== "confirm-archive") return;
+    onArchiveAthlete(modal.athlete.id, "Archived");
+    closeModal();
+  };
+
   return (
     <div className="relative animate-in space-y-6 pb-24 fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Active Roster
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Active Roster</h1>
           <p className="mt-1 text-[13px] text-slate-500">
-            Manage and monitor all student-athletes.
+            Browse, search, and manage student-athlete records in local frontend state.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative hidden sm:block group">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative group">
             <Search className="absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-brand-blue" />
             <input
               type="text"
+              value={filters.search}
+              onChange={(event) => setFilter("search", event.target.value)}
               placeholder="Search athletes..."
-              className="w-64 rounded-full border border-border-subtle/50 bg-surface-card py-2 pl-10 pr-4 text-[12px] text-slate-700 shadow-soft outline-none transition-all placeholder:text-slate-400 focus:border-brand-blue/30"
+              className="w-full rounded-full border border-border-subtle/50 bg-surface-card py-2 pl-10 pr-4 text-[12px] text-slate-700 shadow-soft outline-none transition-all placeholder:text-slate-400 focus:border-brand-blue/30 sm:w-72"
             />
           </div>
+          <select
+            value={filters.sort}
+            onChange={(event) => setFilter("sort", event.target.value)}
+            className="rounded-full border border-border-subtle/50 bg-surface-card px-4 py-2 text-[12px] font-semibold text-slate-600 shadow-soft outline-none"
+          >
+            <option>Recently updated</option>
+            <option>Name</option>
+            <option>Sport</option>
+            <option>Year level</option>
+            <option>Status</option>
+          </select>
           <button
             type="button"
-            onClick={() => setModal({ type: "filter" })}
-            className="flex items-center gap-2 rounded-full border border-border-subtle/50 bg-surface-card px-4 py-2 text-[12px] font-medium tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-50"
+            onClick={() => setModal({ type: "filter", values: filters })}
+            className="flex items-center justify-center gap-2 rounded-full border border-border-subtle/50 bg-surface-card px-4 py-2 text-[12px] font-medium tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-50"
           >
             <Filter className="h-3.5 w-3.5 text-slate-400" />
             FILTER
           </button>
           <button
             type="button"
-            onClick={() => setModal({ type: "add" })}
-            className="flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-medium tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
+            onClick={openAddForm}
+            className="flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-medium tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
           >
             <Plus className="h-3.5 w-3.5" />
             ADD ATHLETE
@@ -973,102 +279,246 @@ export function AthletesList() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[24px] border border-border-subtle/40 bg-surface-card shadow-soft">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border-subtle/50 bg-slate-50/50 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <th className="p-5 pl-7 font-semibold">Athlete</th>
-                <th className="p-5 font-semibold">Sport / Event</th>
-                <th className="p-5 font-semibold">Academic</th>
-                <th className="p-5 font-semibold">Medical</th>
-                <th className="p-5 pr-7 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle/50 text-[13px]">
-              {mockAthletes.map((athlete) => (
-                <tr
-                  key={athlete.id}
-                  className="group cursor-pointer transition-colors hover:bg-slate-50/50"
-                  onClick={() => setSelectedAthlete(athlete)}
-                >
-                  <td className="p-5 pl-7">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={athlete.imageUrl}
-                        alt={athlete.name}
-                        className="h-10 w-10 rounded-full border border-slate-200 object-cover"
-                      />
-                      <div>
-                        <span className="block font-semibold text-slate-900">
-                          {athlete.name}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          {athlete.id}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-5">
-                    <span className="block font-medium text-slate-700">
-                      {athlete.sport}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      {athlete.event}
-                    </span>
-                  </td>
-                  <td className="p-5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          athlete.gpa >= 3.0
-                            ? "bg-brand-blue"
-                            : athlete.gpa >= 2.5
-                              ? "bg-brand-gold"
-                              : "bg-red-500"
-                        }`}
-                      />
-                      <span className="font-semibold text-slate-700">
-                        {athlete.gpa.toFixed(2)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-5">
-                    <span
-                      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                        athlete.status === "Cleared"
-                          ? "bg-green-50 text-green-700"
-                          : athlete.status === "Pending Review"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-red-50 text-red-700"
-                      }`}
-                    >
-                      {athlete.status}
-                    </span>
-                  </td>
-                  <td className="p-5 pr-7 text-right">
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedAthlete(athlete);
-                      }}
-                      className="rounded-lg px-3 py-1.5 font-semibold text-brand-blue transition-colors hover:bg-brand-blue/5 hover:text-brand-blue-hover"
-                    >
-                      View Profile
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {activeFilterEntries.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-[22px] border border-border-subtle/60 bg-surface-card p-3 shadow-soft">
+          {activeFilterEntries.map(([key, value]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key, defaultFilters[key])}
+              className="rounded-full bg-brand-blue-light px-3 py-1.5 text-[11px] font-bold text-brand-blue transition-colors hover:bg-slate-100"
+            >
+              {key}: {value}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setFilters(defaultFilters)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset filters
+          </button>
         </div>
+      )}
+
+      <div className="overflow-hidden rounded-[24px] border border-border-subtle/40 bg-surface-card shadow-soft">
+        <div className="border-b border-border-subtle/50 bg-slate-50/60 px-6 py-4">
+          <p className="text-[12px] font-semibold text-slate-600">
+            Showing {filteredAthletes.length} of {athletes.length} athletes
+          </p>
+        </div>
+        {athletes.length === 0 ? (
+          <EmptyState
+            title="No athletes yet"
+            body="Add the first athlete profile to start building the roster."
+            action={<PrimaryButton onClick={openAddForm}>Add athlete</PrimaryButton>}
+          />
+        ) : filteredAthletes.length === 0 ? (
+          <EmptyState
+            title="No athletes match these filters"
+            body="Try a broader search, remove a filter, or reset the roster view."
+            action={<SecondaryButton onClick={() => setFilters(defaultFilters)}>Reset filters</SecondaryButton>}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border-subtle/50 bg-slate-50/50 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <th className="p-5 pl-7 font-semibold">Athlete</th>
+                  <th className="p-5 font-semibold">Sport / Event</th>
+                  <th className="p-5 font-semibold">Coach</th>
+                  <th className="p-5 font-semibold">Department / Year</th>
+                  <th className="p-5 font-semibold">Academic</th>
+                  <th className="p-5 font-semibold">Status</th>
+                  <th className="p-5 pr-7 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle/50 text-[13px]">
+                {filteredAthletes.map((athlete) => (
+                  <tr
+                    key={athlete.id}
+                    className="group cursor-pointer transition-colors hover:bg-slate-50/50"
+                    onClick={() => onSelectAthlete(athlete)}
+                  >
+                    <td className="p-5 pl-7">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={athlete.imageUrl}
+                          alt={athlete.name}
+                          className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                        />
+                        <div>
+                          <span className="block font-semibold text-slate-900">{athlete.name}</span>
+                          <span className="text-[11px] text-slate-500">{athlete.id}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <span className="block font-medium text-slate-700">{athlete.sport}</span>
+                      <span className="text-[11px] text-slate-500">{athlete.event || "No event assigned"}</span>
+                    </td>
+                    <td className="p-5">
+                      <span className="block font-medium text-slate-700">{athlete.coach || "Unassigned"}</span>
+                      <span className="text-[11px] text-slate-500">Assigned coach</span>
+                    </td>
+                    <td className="p-5">
+                      <span className="block max-w-[240px] truncate font-medium text-slate-700">
+                        {athlete.department}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{athlete.year}</span>
+                    </td>
+                    <td className="p-5">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${getAcademicDot(athlete.gpa)}`} />
+                        <span className="font-semibold text-slate-700">{Number(athlete.gpa).toFixed(2)}</span>
+                      </div>
+                      <span className="mt-1 block text-[11px] text-slate-500">{athlete.standing}</span>
+                    </td>
+                    <td className="p-5">
+                      <StatusBadge value={athlete.status} />
+                    </td>
+                    <td className="p-5 pr-7 text-right">
+                      <AthleteActionsMenu
+                        athlete={athlete}
+                        open={openMenuId === athlete.id}
+                        onToggle={() => setOpenMenuId((id) => (id === athlete.id ? null : athlete.id))}
+                        onClose={() => setOpenMenuId(null)}
+                        onView={() => onSelectAthlete(athlete)}
+                        onEdit={() => openEditForm(athlete)}
+                        onNote={() => setModal({ type: "note", athlete, value: "", error: "" })}
+                        onStatus={() =>
+                          setModal({
+                            type: "status",
+                            athlete,
+                            status: athlete.status,
+                            scholarship: athlete.scholarship,
+                            note: "",
+                          })
+                        }
+                        onDocs={() => onSelectAthlete(athlete, "assets")}
+                        onGear={() => onSelectAthlete(athlete, "assets")}
+                        onArchive={() => setModal({ type: "confirm-archive", athlete })}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      <AthletesListModal modal={modal} onClose={closeModal} />
+
+      <AthletesListModal
+        modal={modal}
+        coaches={coaches}
+        onClose={closeModal}
+        onChange={(key, value) =>
+          setModal((current) => ({
+            ...current,
+            values: { ...current.values, [key]: value },
+            errors: { ...current.errors, [key]: undefined },
+          }))
+        }
+        onFilterChange={(key, value) =>
+          setModal((current) => ({
+            ...current,
+            values: { ...current.values, [key]: value },
+          }))
+        }
+        onApplyFilters={() => {
+          setFilters(modal.values);
+          closeModal();
+        }}
+        onResetFilters={() => {
+          setFilters(defaultFilters);
+          closeModal();
+        }}
+        onSaveAthlete={saveAthlete}
+        onSaveNote={saveNote}
+        onStatusChange={(key, value) => setModal((current) => ({ ...current, [key]: value }))}
+        onSaveStatus={saveStatus}
+        onConfirmArchive={confirmArchive}
+      />
     </div>
   );
 }
 
-function AthletesListModal({ modal, onClose }) {
+function AthleteActionsMenu({
+  athlete,
+  open,
+  onToggle,
+  onClose,
+  onView,
+  onEdit,
+  onNote,
+  onStatus,
+  onDocs,
+  onGear,
+  onArchive,
+}) {
+  const run = (action) => (event) => {
+    event.stopPropagation();
+    action();
+    onClose();
+  };
+
+  return (
+    <div className="relative inline-block text-left" onClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle/60 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue"
+        aria-label={`Actions for ${athlete.name}`}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
+          <AthleteMenuAction icon={UserRound} label="View Profile" onClick={run(onView)} />
+          <AthleteMenuAction icon={PencilLine} label="Edit Athlete" onClick={run(onEdit)} />
+          <AthleteMenuAction icon={ShieldCheck} label="Update Status" onClick={run(onStatus)} />
+          <AthleteMenuAction icon={FileText} label="Manage Documents" onClick={run(onDocs)} />
+          <AthleteMenuAction icon={Package} label="Manage Gear" onClick={run(onGear)} />
+          <AthleteMenuAction icon={PencilLine} label="Add Note" onClick={run(onNote)} />
+          <AthleteMenuAction icon={Archive} label="Archive Athlete" onClick={run(onArchive)} tone="danger" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AthleteMenuAction({ icon: Icon, label, onClick, tone = "default" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors ${
+        tone === "danger"
+          ? "text-red-600 hover:bg-red-50"
+          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+}
+
+function AthletesListModal({
+  modal,
+  coaches,
+  onClose,
+  onChange,
+  onFilterChange,
+  onApplyFilters,
+  onResetFilters,
+  onSaveAthlete,
+  onSaveNote,
+  onStatusChange,
+  onSaveStatus,
+  onConfirmArchive,
+}) {
   if (!modal) return null;
 
   if (modal.type === "filter") {
@@ -1077,48 +527,159 @@ function AthletesListModal({ modal, onClose }) {
         open
         onClose={onClose}
         title="Filter Roster"
-        description="Narrow the roster by sport, clearance status, and academic risk."
+        description="Narrow the roster by sport, status, academic standing, year level, or coach."
         footer={
           <>
-            <SecondaryButton onClick={onClose}>Reset</SecondaryButton>
-            <PrimaryButton onClick={onClose}>Apply filters</PrimaryButton>
+            <SecondaryButton onClick={onResetFilters}>Reset</SecondaryButton>
+            <PrimaryButton onClick={onApplyFilters}>Apply filters</PrimaryButton>
           </>
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Sport">
-            <SelectInput defaultValue="All sports">
+            <SelectInput value={modal.values.sport} onChange={(event) => onFilterChange("sport", event.target.value)}>
               <option>All sports</option>
-              <option>Basketball</option>
-              <option>Track & Field</option>
-              <option>Volleyball</option>
+              {sports.map((sport) => (
+                <option key={sport}>{sport}</option>
+              ))}
             </SelectInput>
           </Field>
-          <Field label="Medical status">
-            <SelectInput defaultValue="Any status">
-              <option>Any status</option>
-              <option>Cleared</option>
-              <option>Injured</option>
-              <option>Pending Review</option>
+          <Field label="Status">
+            <SelectInput value={modal.values.status} onChange={(event) => onFilterChange("status", event.target.value)}>
+              <option>All statuses</option>
+              {athleteStatuses.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Year level">
+            <SelectInput value={modal.values.year} onChange={(event) => onFilterChange("year", event.target.value)}>
+              <option>All years</option>
+              {yearLevels.map((year) => (
+                <option key={year}>{year}</option>
+              ))}
             </SelectInput>
           </Field>
           <Field label="Academic standing">
-            <SelectInput defaultValue="Any standing">
-              <option>Any standing</option>
-              <option>Good</option>
-              <option>Deans List</option>
-              <option>Probation</option>
+            <SelectInput
+              value={modal.values.standing}
+              onChange={(event) => onFilterChange("standing", event.target.value)}
+            >
+              <option>All standings</option>
+              {academicStandings.map((standing) => (
+                <option key={standing}>{standing}</option>
+              ))}
             </SelectInput>
           </Field>
-          <Field label="Scholarship">
-            <SelectInput defaultValue="Any scholarship">
-              <option>Any scholarship</option>
-              <option>Full Scholarship</option>
-              <option>Partial Scholarship</option>
-              <option>Walk-on</option>
+          <Field label="Coach">
+            <SelectInput value={modal.values.coach} onChange={(event) => onFilterChange("coach", event.target.value)}>
+              {coaches.map((coach) => (
+                <option key={coach}>{coach}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Sort">
+            <SelectInput value={modal.values.sort} onChange={(event) => onFilterChange("sort", event.target.value)}>
+              <option>Recently updated</option>
+              <option>Name</option>
+              <option>Sport</option>
+              <option>Year level</option>
+              <option>Status</option>
             </SelectInput>
           </Field>
         </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "note") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={`Add Note | ${modal.athlete.name}`}
+        description="Capture a quick staff note for this athlete profile."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onSaveNote}>Save note</PrimaryButton>
+          </>
+        }
+      >
+        <Field label="Note" error={modal.error}>
+          <TextArea
+            value={modal.value}
+            onChange={(event) => onStatusChange("value", event.target.value)}
+            placeholder="Type a short note..."
+          />
+        </Field>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "status") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={`Update Status | ${modal.athlete.name}`}
+        description="Update roster status and scholarship classification in local state."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onSaveStatus}>Save status</PrimaryButton>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Roster status">
+            <SelectInput value={modal.status} onChange={(event) => onStatusChange("status", event.target.value)}>
+              {athleteStatuses.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Scholarship">
+            <SelectInput
+              value={modal.scholarship}
+              onChange={(event) => onStatusChange("scholarship", event.target.value)}
+            >
+              {scholarshipTypes.map((scholarship) => (
+                <option key={scholarship}>{scholarship}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Status note">
+              <TextArea
+                value={modal.note}
+                onChange={(event) => onStatusChange("note", event.target.value)}
+                placeholder="Reason for the status update..."
+              />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "confirm-archive") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Archive Athlete"
+        description={`${modal.athlete.name} will remain in local data but will be marked as archived.`}
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Keep active</SecondaryButton>
+            <PrimaryButton tone="danger" onClick={onConfirmArchive}>Archive athlete</PrimaryButton>
+          </>
+        }
+      >
+        <FeedbackPanel tone="warning" title="Confirmation required">
+          This is a frontend-only update. Backend persistence and audit logging can be connected later.
+        </FeedbackPanel>
       </Modal>
     );
   }
@@ -1127,45 +688,291 @@ function AthletesListModal({ modal, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Add Athlete"
-      description="Create a placeholder athlete profile for later backend persistence."
+      title={modal.mode === "edit" ? "Edit Athlete" : "Add Athlete"}
+      description={
+        modal.mode === "edit"
+          ? "Update roster, contact, academic, and sport assignment details."
+          : "Create a complete local athlete profile before backend persistence is connected."
+      }
       footer={
         <>
           <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={onClose}>Save athlete</PrimaryButton>
+          <PrimaryButton onClick={onSaveAthlete}>Save athlete</PrimaryButton>
         </>
       }
       size="lg"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Full name">
-          <TextInput placeholder="Student-athlete name" />
-        </Field>
-        <Field label="Student ID">
-          <TextInput placeholder="#2026-00000" />
-        </Field>
-        <Field label="Sport">
-          <SelectInput defaultValue="Basketball">
-            <option>Basketball</option>
-            <option>Track & Field</option>
-            <option>Volleyball</option>
-            <option>Football</option>
-          </SelectInput>
-        </Field>
-        <Field label="Event / Position">
-          <TextInput placeholder="Point Guard, Libero, 400m..." />
-        </Field>
-        <Field label="Coach">
-          <TextInput placeholder="Assigned coach" />
-        </Field>
-        <Field label="Medical status">
-          <SelectInput defaultValue="Cleared">
-            <option>Cleared</option>
-            <option>Injured</option>
-            <option>Pending Review</option>
-          </SelectInput>
-        </Field>
-      </div>
+      <AthleteForm values={modal.values} errors={modal.errors} onChange={onChange} />
     </Modal>
   );
+}
+
+function AthleteForm({ values, errors, onChange }) {
+  return (
+    <div className="space-y-5">
+      <FormSection title="Basic Information">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Full name" error={errors.name}>
+            <TextInput value={values.name} onChange={(event) => onChange("name", event.target.value)} />
+          </Field>
+          <Field label="Student ID" error={errors.id}>
+            <TextInput value={values.id} onChange={(event) => onChange("id", event.target.value)} placeholder="#2026-00000" />
+          </Field>
+          <Field label="Status">
+            <SelectInput value={values.status} onChange={(event) => onChange("status", event.target.value)}>
+              {athleteStatuses.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Scholarship">
+            <SelectInput value={values.scholarship} onChange={(event) => onChange("scholarship", event.target.value)}>
+              {scholarshipTypes.map((scholarship) => (
+                <option key={scholarship}>{scholarship}</option>
+              ))}
+            </SelectInput>
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Sport Assignment">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Sport / Team" error={errors.sport}>
+            <SelectInput value={values.sport} onChange={(event) => onChange("sport", event.target.value)}>
+              {sports.map((sport) => (
+                <option key={sport}>{sport}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Event / Position">
+            <TextInput value={values.event} onChange={(event) => onChange("event", event.target.value)} />
+          </Field>
+          <Field label="Coach">
+            <TextInput value={values.coach} onChange={(event) => onChange("coach", event.target.value)} />
+          </Field>
+          <Field label="Profile summary">
+            <TextInput value={values.summary} onChange={(event) => onChange("summary", event.target.value)} />
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Academic Information">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Department" error={errors.department}>
+            <TextInput value={values.department} onChange={(event) => onChange("department", event.target.value)} />
+          </Field>
+          <Field label="Course">
+            <TextInput value={values.course} onChange={(event) => onChange("course", event.target.value)} />
+          </Field>
+          <Field label="Year level" error={errors.year}>
+            <SelectInput value={values.year} onChange={(event) => onChange("year", event.target.value)}>
+              {yearLevels.map((year) => (
+                <option key={year}>{year}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Academic standing">
+            <SelectInput value={values.standing} onChange={(event) => onChange("standing", event.target.value)}>
+              {academicStandings.map((standing) => (
+                <option key={standing}>{standing}</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="GPA" error={errors.gpa}>
+            <TextInput value={values.gpa} onChange={(event) => onChange("gpa", event.target.value)} placeholder="3.25" />
+          </Field>
+          <Field label="Units">
+            <TextInput value={values.units} onChange={(event) => onChange("units", event.target.value)} placeholder="18 units" />
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Contact Details">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Email" error={errors.email}>
+            <TextInput value={values.email} onChange={(event) => onChange("email", event.target.value)} />
+          </Field>
+          <Field label="Contact number" error={errors.phone}>
+            <TextInput value={values.phone} onChange={(event) => onChange("phone", event.target.value)} />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Address">
+              <TextInput value={values.address} onChange={(event) => onChange("address", event.target.value)} />
+            </Field>
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection title="Emergency Contact">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Name">
+            <TextInput value={values.emergencyName} onChange={(event) => onChange("emergencyName", event.target.value)} />
+          </Field>
+          <Field label="Relationship">
+            <TextInput
+              value={values.emergencyRelationship}
+              onChange={(event) => onChange("emergencyRelationship", event.target.value)}
+            />
+          </Field>
+          <Field label="Phone">
+            <TextInput value={values.emergencyPhone} onChange={(event) => onChange("emergencyPhone", event.target.value)} />
+          </Field>
+        </div>
+      </FormSection>
+    </div>
+  );
+}
+
+function FormSection({ title, children }) {
+  return (
+    <section className="rounded-[22px] border border-border-subtle/60 bg-slate-50/70 p-5">
+      <h3 className="mb-4 text-[14px] font-bold text-slate-900">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ title, body, action }) {
+  return (
+    <div className="p-8">
+      <div className="rounded-2xl border border-dashed border-border-subtle bg-slate-50/70 p-6 text-center">
+        <p className="text-[15px] font-bold text-slate-900">{title}</p>
+        <p className="mx-auto mt-1 max-w-md text-[13px] leading-6 text-slate-500">{body}</p>
+        {action && <div className="mt-4 flex justify-center">{action}</div>}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ value }) {
+  const tone =
+    value === "Cleared"
+      ? "bg-green-50 text-green-700"
+      : value === "Pending Review"
+        ? "bg-amber-50 text-amber-700"
+        : value === "Archived" || value === "Inactive"
+          ? "bg-slate-100 text-slate-600"
+          : "bg-red-50 text-red-700";
+
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}>
+      {value}
+    </span>
+  );
+}
+
+function getAcademicDot(gpa) {
+  if (Number(gpa) >= 3) return "bg-brand-blue";
+  if (Number(gpa) >= 2.5) return "bg-brand-gold";
+  return "bg-red-500";
+}
+
+function athleteToForm(athlete) {
+  return {
+    ...emptyAthleteForm,
+    name: athlete.name,
+    id: athlete.id,
+    sport: athlete.sport,
+    event: athlete.event,
+    coach: athlete.coach,
+    status: athlete.status,
+    scholarship: athlete.scholarship,
+    department: athlete.department,
+    course: athlete.course ?? "",
+    year: athlete.year,
+    standing: athlete.standing,
+    gpa: String(athlete.gpa),
+    attendance: athlete.academics?.attendance ?? "",
+    units: athlete.academics?.units ?? "",
+    academicEligibility: athlete.academics?.eligibility ?? "",
+    email: athlete.contact?.email ?? "",
+    phone: athlete.contact?.phone ?? "",
+    address: athlete.contact?.address ?? "",
+    emergencyName: athlete.contact?.emergency?.name ?? "",
+    emergencyRelationship: athlete.contact?.emergency?.relationship ?? "",
+    emergencyPhone: athlete.contact?.emergency?.phone ?? "",
+    birthdate: athlete.personal?.birthdate ?? "",
+    age: athlete.personal?.age ?? "",
+    gender: athlete.personal?.gender ?? "",
+    nationality: athlete.personal?.nationality ?? "",
+    height: athlete.personal?.height ?? "",
+    weight: athlete.personal?.weight ?? "",
+    bloodType: athlete.personal?.bloodType ?? "",
+    side: athlete.personal?.side ?? "",
+    summary: athlete.overview?.summary ?? "",
+  };
+}
+
+function mergeAthleteForm(athlete, values) {
+  return {
+    ...athlete,
+    id: values.id.trim(),
+    name: values.name.trim(),
+    sport: values.sport,
+    event: values.event.trim(),
+    coach: values.coach.trim(),
+    status: values.status,
+    scholarship: values.scholarship,
+    department: values.department.trim(),
+    course: values.course.trim(),
+    year: values.year,
+    standing: values.standing,
+    gpa: Number(values.gpa || 0),
+    personal: {
+      ...athlete.personal,
+      birthdate: values.birthdate,
+      age: values.age,
+      gender: values.gender,
+      nationality: values.nationality,
+      height: values.height,
+      weight: values.weight,
+      bloodType: values.bloodType,
+      side: values.side,
+    },
+    contact: {
+      phone: values.phone.trim(),
+      email: values.email.trim(),
+      address: values.address.trim(),
+      emergency: {
+        name: values.emergencyName.trim(),
+        relationship: values.emergencyRelationship.trim(),
+        phone: values.emergencyPhone.trim(),
+      },
+    },
+    overview: {
+      ...athlete.overview,
+      summary: values.summary || athlete.overview.summary,
+    },
+    academics: {
+      ...athlete.academics,
+      attendance: values.attendance || athlete.academics.attendance,
+      units: values.units || athlete.academics.units,
+      eligibility: values.academicEligibility || athlete.academics.eligibility,
+    },
+  };
+}
+
+function validateAthleteForm(values) {
+  const errors = {};
+
+  if (!values.name.trim()) errors.name = "Full name is required.";
+  if (!values.id.trim()) errors.id = "Student ID is required.";
+  if (values.id && !/^#?\d{4}-\d{5}$/.test(values.id.trim())) {
+    errors.id = "Use the format #2026-00000.";
+  }
+  if (!values.sport) errors.sport = "Sport or team is required.";
+  if (!values.year) errors.year = "Year level is required.";
+  if (!values.status) errors.status = "Status is required.";
+  if (!values.department.trim()) errors.department = "Department is required.";
+  if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+    errors.email = "Enter a valid email address.";
+  }
+  if (values.phone && !/^[+()\d\s-]{7,}$/.test(values.phone)) {
+    errors.phone = "Enter a valid contact number.";
+  }
+  if (values.gpa && (Number.isNaN(Number(values.gpa)) || Number(values.gpa) < 0 || Number(values.gpa) > 4)) {
+    errors.gpa = "GPA must be between 0 and 4.";
+  }
+
+  return errors;
 }

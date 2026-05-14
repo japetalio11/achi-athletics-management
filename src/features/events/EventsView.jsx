@@ -1303,9 +1303,7 @@ function SelectedEventCard({
               <VisibilityBadge value={event.visibility} />
               <ResultStatusBadge value={event.resultStatus} />
             </div>
-            <h3 className="mt-3 text-[15px] font-bold text-slate-900">
-              {event.title}
-            </h3>
+            <h3 className="mt-3 text-[15px] font-bold text-slate-900">{event.title}</h3>
             <p className="mt-1 text-[12px] text-slate-500">
               {event.sportCategory} | {event.type}
             </p>
@@ -1319,14 +1317,15 @@ function SelectedEventCard({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <ActionButton label="Details" onClick={() => onOpenDetails(event)} />
             {canManageEvents ? (
-              <>
-                <ActionButton label="Edit" onClick={() => onOpenEdit(event)} />
-                <ActionButton label="Assign" onClick={() => onOpenAssign(event)} />
-                <ActionButton label="Results" onClick={() => onOpenResults(event)} />
-              </>
+              <SelectedEventActionsMenu
+                event={event}
+                onOpenEdit={onOpenEdit}
+                onOpenAssign={onOpenAssign}
+                onOpenResults={onOpenResults}
+              />
             ) : (
               event.resultStatus === "Published" && (
                 <ActionButton label="View Results" onClick={() => onOpenDetails(event)} />
@@ -1336,6 +1335,24 @@ function SelectedEventCard({
         </div>
       )}
     </div>
+  );
+}
+
+function SelectedEventActionsMenu({ event, onOpenEdit, onOpenAssign, onOpenResults }) {
+  return (
+    <details className="relative inline-block text-left">
+      <summary
+        aria-label={`More actions for ${event.title}`}
+        className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 [&::-webkit-details-marker]:hidden"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
+        <MenuAction label="Edit" onClick={() => onOpenEdit(event)} />
+        <MenuAction label="Assign Athletes" onClick={() => onOpenAssign(event)} />
+        <MenuAction label="Record Results" onClick={() => onOpenResults(event)} />
+      </div>
+    </details>
   );
 }
 

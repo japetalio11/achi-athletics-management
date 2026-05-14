@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  ArrowLeft,
   Award,
   CalendarDays,
   ChevronLeft,
@@ -11,13 +12,16 @@ import {
   Image as ImageIcon,
   Mail,
   MapPin,
-  MoreVertical,
+  MoreHorizontal,
+  Package,
+  PencilLine,
   Phone,
   Plus,
   ShieldAlert,
   ShieldCheck,
-  TrendingUp,
+  Upload,
   UserRound,
+  Trophy,
 } from "lucide-react";
 import {
   Field,
@@ -29,6 +33,7 @@ import {
   TextArea,
   TextInput,
 } from "../../components/ui/Modal";
+import { academicStandings, athleteStatuses, scholarshipTypes, sports, yearLevels } from "./athletesMockData";
 
 const tabs = [
   { id: "overview", label: "Overview" },
@@ -38,616 +43,137 @@ const tabs = [
   { id: "assets", label: "Documents & Gear" },
 ];
 
+const tabCopy = {
+  overview: {
+    title: "Athlete Snapshot",
+    description: "Latest profile summary, priorities, alerts, and recent activity.",
+  },
+  details: {
+    title: "Detailed Athlete Information",
+    description: "Identity, contact, emergency, physical, sport, and team assignment details.",
+  },
+  academics: {
+    title: "Academic Monitoring",
+    description: "Track GPA, eligibility, attendance, adviser notes, and recent updates.",
+  },
+  events: {
+    title: "Events Participation",
+    description: "Review assigned events, participation status, results, and result notes.",
+  },
+  assets: {
+    title: "Documents and Equipment",
+    description: "Manage required documents, file statuses, issued gear, and return workflows.",
+  },
+};
+
 const equipmentIcons = {
   shoe: ImageIcon,
   strength: Dumbbell,
   monitor: Activity,
-  default: ImageIcon,
+  default: Package,
 };
 
-const tabCopy = {
-  overview: {
-    title: "Athlete Snapshot",
-    description:
-      "See the latest profile summary, current priorities, and recent milestones.",
-  },
-  details: {
-    title: "Detailed Athlete Information",
-    description:
-      "Separate identity, contact, and athlete history into one cleaner profile record.",
-  },
-  academics: {
-    title: "Academic Monitoring",
-    description:
-      "Track GPA, eligibility, attendance, and intervention notes for compliance review.",
-  },
-  events: {
-    title: "Events Participation",
-    description:
-      "Review assigned events, competition results, attendance status, and coach remarks.",
-  },
-  assets: {
-    title: "Documents and Equipment",
-    description:
-      "Review files, clearances, and issued gear without leaving the athlete page.",
-  },
-};
-
-export function AthleteProfile({ athlete }) {
+export function AthleteProfile({
+  athlete,
+  initialTab = "overview",
+  onBack,
+  onSelectTab,
+  onUpdateAthlete,
+  onAddNote,
+  onArchiveAthlete,
+}) {
+  const [activeTab, setActiveTab] = useState(initialTab || "overview");
   const [modal, setModal] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
   const [eventPage, setEventPage] = useState(0);
-  const closeModal = () => setModal(null);
+  const [activeOverflowMenuId, setActiveOverflowMenuId] = useState(null);
   const eventsPerPage = 3;
+
+  const activeCopy = tabCopy[activeTab];
+
+  const updateAthlete = (updater, feedback) => {
+    onUpdateAthlete(athlete.id, updater, feedback);
+  };
+
+  const switchTab = (tabId) => {
+    setActiveTab(tabId);
+    onSelectTab?.(tabId);
+  };
+
+  useEffect(() => {
+    setActiveOverflowMenuId(null);
+  }, [activeTab]);
 
   const statusTone =
     athlete.status === "Cleared"
       ? "bg-green-50 text-green-700"
       : athlete.status === "Pending Review"
         ? "bg-amber-50 text-amber-700"
-        : "bg-red-50 text-red-700";
+        : athlete.status === "Archived" || athlete.status === "Inactive"
+          ? "bg-slate-100 text-slate-600"
+          : "bg-red-50 text-red-700";
 
-  const activeCopy = tabCopy[activeTab];
+  const eventSummary = useMemo(() => {
+    const items = athlete.eventsParticipation?.items ?? [];
+    const completed = items.filter((item) => item.status === "Completed").length;
+    const upcoming = items.filter((item) => item.status === "Upcoming" || item.status === "Ongoing").length;
+    const present = items.filter((item) => item.attendance === "Present").length;
+    const attendance = items.length ? `${Math.round((present / items.length) * 100)}%` : "No data";
 
-  const handleTabChange = (tabId) => {
-    if (tabId === activeTab) {
-      return;
-    }
+    return {
+      total: String(items.length),
+      completed: String(completed),
+      upcoming: String(upcoming),
+      attendance,
+    };
+  }, [athlete.eventsParticipation]);
 
-    setActiveTab(tabId);
-  };
-
-  const currentTabContent = useMemo(() => {
-    if (activeTab === "details") {
-      return (
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <ProfileCard title="Personal Record">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <DetailField label="Full name" value={athlete.name} />
-              <DetailField label="Student ID" value={athlete.id} />
-              <DetailField label="Birthdate" value={athlete.personal.birthdate} />
-              <DetailField label="Age" value={athlete.personal.age} />
-              <DetailField label="Gender" value={athlete.personal.gender} />
-              <DetailField
-                label="Nationality"
-                value={athlete.personal.nationality}
-              />
-              <DetailField label="Height" value={athlete.personal.height} />
-              <DetailField label="Weight" value={athlete.personal.weight} />
-              <DetailField label="Blood type" value={athlete.personal.bloodType} />
-              <DetailField label="Dominant side" value={athlete.personal.side} />
-            </div>
-          </ProfileCard>
-
-          <ProfileCard title="Contact Details">
-            <div className="space-y-4">
-              <InfoRow
-                icon={Phone}
-                label="Mobile"
-                value={athlete.contact.phone}
-              />
-              <InfoRow
-                icon={Mail}
-                label="Email"
-                value={athlete.contact.email}
-              />
-              <InfoRow
-                icon={MapPin}
-                label="Address"
-                value={athlete.contact.address}
-              />
-              <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                  Emergency Contact
-                </p>
-                <p className="mt-2 text-[14px] font-semibold text-slate-900">
-                  {athlete.contact.emergency.name}
-                </p>
-                <p className="text-[13px] text-slate-600">
-                  {athlete.contact.emergency.relationship}
-                </p>
-                <p className="mt-1 text-[13px] text-slate-700">
-                  {athlete.contact.emergency.phone}
-                </p>
-              </div>
-            </div>
-          </ProfileCard>
-        </div>
-      );
-    }
-
-    if (activeTab === "academics") {
-      return (
-        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-6">
-            <ProfileCard title="Eligibility Summary">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <MetricTile
-                  label="Current GPA"
-                  value={`${athlete.gpa.toFixed(2)} / 4.0`}
-                  hint={athlete.academics.gpaTrend}
-                  tone="blue"
-                />
-                <MetricTile
-                  label="Attendance"
-                  value={athlete.academics.attendance}
-                  hint={athlete.academics.attendanceNote}
-                  tone="gold"
-                />
-                <MetricTile
-                  label="Units Enrolled"
-                  value={athlete.academics.units}
-                  hint={athlete.academics.term}
-                />
-                <MetricTile
-                  label="Eligibility"
-                  value={athlete.academics.eligibility}
-                  hint={athlete.academics.eligibilityNote}
-                />
-              </div>
-            </ProfileCard>
-
-            <ProfileCard title="Adviser and Support Notes">
-              <div className="space-y-3">
-                {athlete.academics.notes.map((note) => (
-                  <div
-                    key={note.title}
-                    className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[13px] font-semibold text-slate-900">
-                        {note.title}
-                      </p>
-                      <p className="text-[11px] text-slate-500">{note.owner}</p>
-                    </div>
-                    <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-                      {note.body}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </ProfileCard>
-          </div>
-
-          <ProfileCard title="Semester Trend">
-            <div className="space-y-5">
-              <div className="flex h-56 items-end justify-between gap-3 rounded-[24px] border border-border-subtle/60 bg-slate-50/70 px-5 pb-10 pt-6">
-                {athlete.academics.trend.map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex flex-1 flex-col items-center justify-end gap-3"
-                  >
-                    <div className="flex h-full w-full items-end justify-center">
-                      <div
-                        className={`w-full max-w-10 rounded-full ${
-                          item.active
-                            ? "bg-brand-blue shadow-soft"
-                            : "bg-slate-200"
-                        }`}
-                        style={{ height: `${item.value}%` }}
-                      />
-                    </div>
-                    <div className="text-center">
-                      <p
-                        className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
-                          item.active ? "text-brand-blue" : "text-slate-400"
-                        }`}
-                      >
-                        {item.label}
-                      </p>
-                      <p className="mt-1 text-[12px] font-semibold text-slate-700">
-                        {item.score}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {athlete.academics.currentSubjects.map((subject) => (
-                  <div
-                    key={subject.name}
-                    className="rounded-2xl border border-border-subtle/60 bg-white p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[13px] font-semibold text-slate-900">
-                        {subject.name}
-                      </p>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
-                        {subject.grade}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-[12px] text-slate-500">
-                      {subject.schedule}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </ProfileCard>
-        </div>
-      );
-    }
-
-    if (activeTab === "events") {
-      const totalEventPages = Math.max(
-        1,
-        Math.ceil(athlete.eventsParticipation.items.length / eventsPerPage),
-      );
-      const currentEventPage = Math.min(eventPage, totalEventPages - 1);
-      const visibleEvents = athlete.eventsParticipation.items.slice(
-        currentEventPage * eventsPerPage,
-        currentEventPage * eventsPerPage + eventsPerPage,
-      );
-
-      return (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricTile
-              label="Total Events"
-              value={athlete.eventsParticipation.summary.total}
-              hint="This tracking cycle"
-              tone="blue"
-            />
-            <MetricTile
-              label="Completed"
-              value={athlete.eventsParticipation.summary.completed}
-              hint="Finished participation"
-              tone="gold"
-            />
-            <MetricTile
-              label="Upcoming"
-              value={athlete.eventsParticipation.summary.upcoming}
-              hint="Still scheduled"
-            />
-            <MetricTile
-              label="Attendance"
-              value={athlete.eventsParticipation.summary.attendance}
-              hint="Session presence rate"
-            />
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <ProfileCard title="Participation History">
-              <div className="space-y-3">
-                {visibleEvents.map((event) => (
-                  <div
-                    key={`${event.date}-${event.title}`}
-                    className="rounded-[22px] border border-border-subtle/60 bg-white p-4 shadow-soft"
-                  >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[15px] font-semibold text-slate-900">
-                            {event.title}
-                          </p>
-                          <EventStatusPill value={event.status} />
-                        </div>
-                        <p className="mt-1 text-[12px] text-slate-500">
-                          {event.type} | {event.date} | {event.venue}
-                        </p>
-                        {event.summary ? (
-                          <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-                            {event.summary}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="grid min-w-full gap-2 sm:grid-cols-3 lg:min-w-[280px]">
-                        <EventMiniStat label="Attendance" value={event.attendance} />
-                        <EventMiniStat label="Result" value={event.result} />
-                        <EventMiniStat label="Coach" value={event.coach} />
-                      </div>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 flex items-center justify-between rounded-2xl border border-brand-blue/15 bg-brand-blue-light/80 px-4 py-3 shadow-soft">
-                <button
-                  type="button"
-                  onClick={() => setEventPage((page) => Math.max(0, page - 1))}
-                  disabled={currentEventPage === 0}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </button>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-blue">
-                  Page {currentEventPage + 1} of {totalEventPages}
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEventPage((page) => Math.min(totalEventPages - 1, page + 1))
-                  }
-                  disabled={currentEventPage >= totalEventPages - 1}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </ProfileCard>
-
-            <ProfileCard title="Participation Notes">
-              <div className="space-y-4">
-                {athlete.eventsParticipation.notes.map((entry) => (
-                  <div
-                    key={`${entry.date}-${entry.title}`}
-                    className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[13px] font-semibold text-slate-900">
-                        {entry.title}
-                      </p>
-                      <span className="text-[11px] text-slate-500">
-                        {entry.date}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-                      {entry.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-border-subtle/60 bg-white p-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Common Event Roles
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {athlete.eventsParticipation.roles.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full bg-brand-blue-light px-3 py-1.5 text-[12px] font-semibold text-brand-blue"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </ProfileCard>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === "assets") {
-      return (
-        <div className="space-y-6">
-          <ProfileCard
-            title="Digital Documents"
-            action={
-              <button
-                type="button"
-                onClick={() => setModal({ type: "document" })}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-50"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            }
-          >
-            <div className="grid gap-3 md:grid-cols-2">
-              {athlete.documents.map((document) => (
-                <button
-                  key={document.name}
-                  type="button"
-                  onClick={() =>
-                    setModal({
-                      type: "view-document",
-                      payload: document.name,
-                    })
-                  }
-                  className="flex items-start gap-4 rounded-2xl border border-border-subtle/60 p-4 text-left transition-all hover:border-brand-blue/20 hover:bg-slate-50"
-                >
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                      document.kind === "pdf"
-                        ? "bg-red-50 text-red-500"
-                        : document.kind === "image"
-                          ? "bg-slate-100 text-slate-500"
-                          : "bg-brand-blue-light text-brand-blue"
-                    }`}
-                  >
-                    {document.kind === "image" ? (
-                      <ImageIcon className="h-5 w-5" />
-                    ) : (
-                      <FileText className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-slate-900">
-                      {document.name}
-                    </p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-                      {document.meta}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </ProfileCard>
-
-          <ProfileCard
-            title="Equipment History"
-            action={
-              <button
-                type="button"
-                onClick={() => setModal({ type: "issue" })}
-                className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                ISSUE ITEM
-              </button>
-            }
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-border-subtle/60 bg-slate-50/70 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                    <th className="p-5 pl-0">Item Description</th>
-                    <th className="p-5">Issued Date</th>
-                    <th className="p-5">Due Date</th>
-                    <th className="p-5">Status</th>
-                    <th className="p-5 pr-0 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle/50 text-[13px]">
-                  {athlete.equipmentHistory.map((item) => {
-                    const Icon =
-                      equipmentIcons[item.icon] ?? equipmentIcons.default;
-                    return (
-                      <tr
-                        key={`${item.name}-${item.serial}`}
-                        className="transition-colors hover:bg-slate-50/70"
-                      >
-                        <td className="p-5 pl-0">
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-                              <Icon className="h-5 w-5 opacity-60" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-slate-900">
-                                {item.name}
-                              </p>
-                              <p className="text-[11px] text-slate-500">
-                                Serial: {item.serial}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-5 text-slate-600">{item.issuedDate}</td>
-                        <td
-                          className={`p-5 ${
-                            item.status === "Overdue"
-                              ? "font-semibold text-red-600"
-                              : "text-slate-600"
-                          }`}
-                        >
-                          {item.dueDate}
-                        </td>
-                        <td className="p-5">
-                          <StatusPill status={item.status} />
-                        </td>
-                        <td className="p-5 pr-0 text-right">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setModal({
-                                type: "equipment-action",
-                                payload: item.name,
-                              })
-                            }
-                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-blue"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </ProfileCard>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricTile
-            label="Eligibility"
-            value={athlete.overview.eligibility}
-            hint={athlete.overview.eligibilityNote}
-            tone="blue"
-          />
-          <MetricTile
-            label="Training Load"
-            value={athlete.overview.trainingLoad}
-            hint={athlete.overview.trainingNote}
-            tone="gold"
-          />
-          <MetricTile
-            label="Next Review"
-            value={athlete.overview.nextReview}
-            hint={athlete.overview.reviewOwner}
-          />
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <ProfileCard title="Current Focus and Alerts">
-            <div className="grid gap-3">
-              {athlete.overview.alerts.map((alert) => (
-                <div
-                  key={alert.title}
-                  className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                        alert.level === "attention"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-brand-blue-light text-brand-blue"
-                      }`}
-                    >
-                      {alert.level === "attention" ? (
-                        <ShieldAlert className="h-4 w-4" />
-                      ) : (
-                        <ShieldCheck className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-slate-900">
-                        {alert.title}
-                      </p>
-                      <p className="mt-1 text-[12px] leading-relaxed text-slate-600">
-                        {alert.body}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ProfileCard>
-
-          <ProfileCard title="Milestones and Recognition">
-            <div className="space-y-3">
-              {athlete.achievements.map((item) => (
-                <div
-                  key={`${item.date}-${item.title}`}
-                  className="flex gap-4 rounded-2xl border border-border-subtle/60 bg-white p-4"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-gold-light text-brand-gold-hover">
-                    <Award className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-semibold text-slate-900">
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-[12px] text-slate-500">{item.date}</p>
-                    <p className="mt-1.5 text-[12px] leading-relaxed text-slate-600">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ProfileCard>
-        </div>
-      </div>
-    );
-  }, [activeTab, athlete, eventPage]);
+  const currentTabContent = {
+    overview: (
+      <OverviewTab
+        athlete={athlete}
+        onOpenTab={switchTab}
+        onOpenModal={setModal}
+      />
+    ),
+    details: <DetailsTab athlete={athlete} onOpenModal={setModal} />,
+    academics: <AcademicsTab athlete={athlete} onOpenModal={setModal} />,
+    events: (
+      <EventsTab
+        athlete={athlete}
+        summary={eventSummary}
+        eventPage={eventPage}
+        eventsPerPage={eventsPerPage}
+        setEventPage={setEventPage}
+          activeOverflowMenuId={activeOverflowMenuId}
+          setActiveOverflowMenuId={setActiveOverflowMenuId}
+        onOpenModal={setModal}
+      />
+    ),
+    assets: (
+      <AssetsTab
+        athlete={athlete}
+        activeOverflowMenuId={activeOverflowMenuId}
+        setActiveOverflowMenuId={setActiveOverflowMenuId}
+        onOpenModal={setModal}
+      />
+    ),
+  }[activeTab];
 
   return (
     <div className="animate-in space-y-6 pb-24 fade-in slide-in-from-bottom-4 duration-500">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-white px-4 py-2 text-[12px] font-bold text-slate-600 shadow-soft transition-colors hover:bg-slate-50"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to roster
+      </button>
+
       <div className="relative overflow-hidden rounded-[28px] border border-border-subtle/40 bg-surface-card p-6 shadow-soft sm:p-8">
         <div className="pointer-events-none absolute inset-y-0 right-0 w-80 bg-gradient-to-l from-brand-blue/8 via-brand-blue/3 to-transparent" />
 
-        <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-start">
               <img
@@ -655,61 +181,54 @@ export function AthleteProfile({ athlete }) {
                 alt={athlete.name}
                 className="h-28 w-28 rounded-[26px] border-4 border-white object-cover shadow-soft"
               />
-
               <div className="min-w-0 flex-1 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                    {athlete.name}
-                  </h1>
-                  <span
-                    className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${statusTone}`}
-                  >
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{athlete.name}</h1>
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${statusTone}`}>
                     {athlete.status}
                   </span>
                 </div>
                 <p className="text-[15px] font-medium text-brand-blue">
                   {[athlete.sport, athlete.department].filter(Boolean).join(" | ")}
                 </p>
+                <p className="max-w-3xl text-sm leading-6 text-slate-500">{athlete.overview.summary}</p>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <ProfileBadge icon={UserRound} label="Student ID" value={athlete.id} />
-              <ProfileBadge
-                icon={CalendarDays}
-                label="Year Level"
-                value={athlete.year}
-              />
-              <ProfileBadge
-                icon={TrendingUp}
-                label="Academic Standing"
-                value={athlete.standing}
-              />
-              <ProfileBadge icon={Clock3} label="Coach" value={athlete.coach} />
+              <ProfileBadge icon={CalendarDays} label="Year Level" value={athlete.year} />
+              <ProfileBadge icon={ShieldCheck} label="Standing" value={athlete.standing} />
+              <ProfileBadge icon={Clock3} label="Coach" value={athlete.coach || "Unassigned"} />
             </div>
           </div>
 
           <aside className="rounded-[24px] border border-border-subtle/60 bg-slate-50/75 p-5 shadow-soft">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              Profile Actions
-            </p>
-
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Profile Actions</p>
             <div className="mt-4 space-y-3">
               <button
                 type="button"
-                onClick={() => setModal({ type: "status" })}
+                onClick={() => setModal({ type: "edit-profile", values: profileToForm(athlete), errors: {} })}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
               >
-                <ShieldCheck className="h-4 w-4" />
-                Edit User
+                <PencilLine className="h-4 w-4" />
+                Edit Athlete
               </button>
               <button
                 type="button"
-                onClick={() => handleTabChange("details")}
+                onClick={() => switchTab("details")}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle/70 bg-white px-5 py-3 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-100"
               >
                 <FileText className="h-4 w-4" />
                 Open Detailed Info
+              </button>
+              <button
+                type="button"
+                onClick={() => setModal({ type: "status", status: athlete.status, scholarship: athlete.scholarship, note: "" })}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle/70 bg-white px-5 py-3 text-[12px] font-bold tracking-wide text-slate-600 shadow-soft transition-colors hover:bg-slate-100"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Update Status
               </button>
             </div>
           </aside>
@@ -720,23 +239,16 @@ export function AthleteProfile({ athlete }) {
         <section className="border-b border-border-subtle/70 bg-surface-card pb-6 pt-5 shadow-[0_1px_0_0_rgba(241,245,249,0.95),0_14px_24px_-24px_rgba(15,58,110,0.55)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
-                Athlete Workspace
-              </p>
-              <h2 className="mt-2 text-[22px] font-bold tracking-tight text-slate-900">
-                {activeCopy.title}
-              </h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-                {activeCopy.description}
-              </p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Athlete Workspace</p>
+              <h2 className="mt-2 text-[22px] font-bold tracking-tight text-slate-900">{activeCopy.title}</h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{activeCopy.description}</p>
             </div>
-
             <div className="flex flex-wrap gap-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => handleTabChange(tab.id)}
+                  onClick={() => switchTab(tab.id)}
                   className={`rounded-full px-4 py-2.5 text-[12px] font-bold tracking-wide transition-all ${
                     activeTab === tab.id
                       ? "bg-brand-blue text-white shadow-soft"
@@ -749,22 +261,1114 @@ export function AthleteProfile({ athlete }) {
             </div>
           </div>
         </section>
-
-        <div className="relative z-0 pt-5">
-          {currentTabContent}
-        </div>
+        <div className="relative z-0 pt-5">{currentTabContent}</div>
       </div>
 
-      <AthleteProfileModal modal={modal} onClose={closeModal} athlete={athlete} />
+      <AthleteProfileModal
+        modal={modal}
+        athlete={athlete}
+        onClose={() => setModal(null)}
+        onSetModal={setModal}
+        onUpdateAthlete={updateAthlete}
+        onAddNote={onAddNote}
+        onArchiveAthlete={onArchiveAthlete}
+        switchTab={switchTab}
+      />
     </div>
   );
 }
 
-function ProfileCard({ title, action, children, className = "" }) {
+function OverviewTab({ athlete, onOpenTab, onOpenModal }) {
   return (
-    <section
-      className={`rounded-[24px] border border-border-subtle/50 bg-surface-card p-6 shadow-soft ${className}`}
-    >
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricTile label="Eligibility" value={athlete.overview.eligibility} hint={athlete.overview.eligibilityNote} tone="blue" />
+        <MetricTile label="Training Load" value={athlete.overview.trainingLoad} hint={athlete.overview.trainingNote} tone="gold" />
+        <MetricTile label="Next Review" value={athlete.overview.nextReview} hint={athlete.overview.reviewOwner} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <ProfileCard
+          title="Quick Actions"
+          action={
+            <button
+              type="button"
+              onClick={() => onOpenModal({ type: "note", value: "", error: "" })}
+              className="rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold text-white shadow-soft hover:bg-brand-blue-hover"
+            >
+              Add note
+            </button>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ActionCard icon={FileText} title="View full details" onClick={() => onOpenTab("details")} />
+            <ActionCard icon={ShieldCheck} title="Update status" onClick={() => onOpenModal({ type: "status", status: athlete.status, scholarship: athlete.scholarship, note: "" })} />
+            <ActionCard icon={CalendarDays} title="View events" onClick={() => onOpenTab("events")} />
+            <ActionCard icon={Package} title="View documents" onClick={() => onOpenTab("assets")} />
+          </div>
+        </ProfileCard>
+
+        <ProfileCard title="Current Focus and Alerts">
+          {(athlete.overview.alerts ?? []).length === 0 ? (
+            <EmptyState title="No active alerts" body="Any staff alerts or current focus items will appear here." />
+          ) : (
+            <div className="grid gap-3">
+              {athlete.overview.alerts.map((alert) => (
+                <AlertCard key={alert.title} alert={alert} />
+              ))}
+            </div>
+          )}
+        </ProfileCard>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ProfileCard title="Milestones and Recognition">
+          {(athlete.achievements ?? []).length === 0 ? (
+            <EmptyState title="No milestones yet" body="Recognition and notable athlete milestones will appear after staff add them." />
+          ) : (
+            <div className="space-y-3">
+              {athlete.achievements.map((item) => (
+                <div key={`${item.date}-${item.title}`} className="flex gap-4 rounded-2xl border border-border-subtle/60 bg-white p-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-gold-light text-brand-gold-hover">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold text-slate-900">{item.title}</p>
+                    <p className="mt-1 text-[12px] text-slate-500">{item.date}</p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-slate-600">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ProfileCard>
+
+        <ProfileCard title="Recent Activity">
+          {(athlete.overview.recentActivity ?? []).length === 0 ? (
+            <EmptyState title="No recent activity" body="Saved notes and local changes will appear here." />
+          ) : (
+            <div className="space-y-3">
+              {athlete.overview.recentActivity.map((item, index) => (
+                <div key={`${item}-${index}`} className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4 text-[13px] leading-6 text-slate-600">
+                  {item}
+                </div>
+              ))}
+            </div>
+          )}
+        </ProfileCard>
+      </div>
+    </div>
+  );
+}
+
+function DetailsTab({ athlete, onOpenModal }) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="space-y-6">
+        <ProfileCard
+          title="Personal Record"
+          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "personal", values: personalToForm(athlete) })}>Edit</SmallAction>}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DetailField label="Full name" value={athlete.name} />
+            <DetailField label="Student ID" value={athlete.id} />
+            <DetailField label="Birthdate" value={athlete.personal.birthdate || "Pending"} />
+            <DetailField label="Age" value={athlete.personal.age || "Pending"} />
+            <DetailField label="Gender" value={athlete.personal.gender || "Pending"} />
+            <DetailField label="Nationality" value={athlete.personal.nationality || "Pending"} />
+            <DetailField label="Height" value={athlete.personal.height || "Pending"} />
+            <DetailField label="Weight" value={athlete.personal.weight || "Pending"} />
+            <DetailField label="Blood type" value={athlete.personal.bloodType || "Pending"} />
+            <DetailField label="Dominant side" value={athlete.personal.side || "Pending"} />
+          </div>
+        </ProfileCard>
+
+        <ProfileCard
+          title="Sport Profile"
+          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "sport", values: sportToForm(athlete) })}>Edit</SmallAction>}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DetailField label="Sport / Team" value={athlete.sport} />
+            <DetailField label="Event / Position" value={athlete.event || "Pending"} />
+            <DetailField label="Coach" value={athlete.coach || "Unassigned"} />
+            <DetailField label="Scholarship" value={athlete.scholarship} />
+          </div>
+        </ProfileCard>
+      </div>
+
+      <div className="space-y-6">
+        <ProfileCard
+          title="Contact Details"
+          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "contact", values: contactToForm(athlete) })}>Edit</SmallAction>}
+        >
+          <div className="space-y-4">
+            <InfoRow icon={Phone} label="Mobile" value={athlete.contact.phone || "Pending"} />
+            <InfoRow icon={Mail} label="Email" value={athlete.contact.email || "Pending"} />
+            <InfoRow icon={MapPin} label="Address" value={athlete.contact.address || "Pending"} />
+          </div>
+        </ProfileCard>
+
+        <ProfileCard
+          title="Emergency Contact"
+          action={<SmallAction onClick={() => onOpenModal({ type: "edit-section", section: "emergency", values: emergencyToForm(athlete) })}>Edit</SmallAction>}
+        >
+          <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+            <p className="text-[14px] font-semibold text-slate-900">{athlete.contact.emergency.name || "Pending"}</p>
+            <p className="text-[13px] text-slate-600">{athlete.contact.emergency.relationship || "Relationship pending"}</p>
+            <p className="mt-1 text-[13px] text-slate-700">{athlete.contact.emergency.phone || "Phone pending"}</p>
+          </div>
+        </ProfileCard>
+      </div>
+    </div>
+  );
+}
+
+function AcademicsTab({ athlete, onOpenModal }) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="space-y-6">
+        <ProfileCard
+          title="Eligibility Summary"
+          action={<SmallAction onClick={() => onOpenModal({ type: "edit-academics", values: academicsToForm(athlete), errors: {} })}>Edit</SmallAction>}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricTile label="Current GPA" value={`${Number(athlete.gpa).toFixed(2)} / 4.0`} hint={athlete.standing} tone="blue" />
+            <MetricTile label="Attendance" value={athlete.academics.attendance} hint={athlete.academics.attendanceNote} tone="gold" />
+            <MetricTile label="Units Enrolled" value={athlete.academics.units} hint={athlete.academics.term} />
+            <MetricTile label="Eligibility" value={athlete.academics.eligibility} hint={athlete.academics.eligibilityNote} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <SecondaryButton onClick={() => onOpenModal({ type: "academic-note", values: { title: "", owner: "", body: "" }, errors: {} })}>Add academic note</SecondaryButton>
+            <SecondaryButton onClick={() => onOpenModal({ type: "eligibility", value: athlete.academics.eligibility, note: athlete.academics.eligibilityNote })}>Update eligibility</SecondaryButton>
+            <SecondaryButton onClick={() => onOpenModal({ type: "academic-history" })}>View history</SecondaryButton>
+          </div>
+        </ProfileCard>
+
+        <ProfileCard title="Adviser and Support Notes">
+          {(athlete.academics.notes ?? []).length === 0 ? (
+            <EmptyState title="No academic notes" body="Add adviser notes or support actions for academic monitoring." />
+          ) : (
+            <div className="space-y-3">
+              {athlete.academics.notes.map((note, index) => (
+                <div key={`${note.title}-${index}`} className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-semibold text-slate-900">{note.title}</p>
+                    <p className="text-[11px] text-slate-500">{note.owner}</p>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">{note.date}</p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-slate-600">{note.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </ProfileCard>
+      </div>
+
+      <ProfileCard title="Semester Trend and Subjects">
+        {(athlete.academics.trend ?? []).length === 0 ? (
+          <EmptyState title="No academic records" body="Semester trend data will appear after academic records are connected." />
+        ) : (
+          <div className="space-y-5">
+            <div className="flex h-56 items-end justify-between gap-3 rounded-[24px] border border-border-subtle/60 bg-slate-50/70 px-5 pb-10 pt-6">
+              {athlete.academics.trend.map((item) => (
+                <div key={item.label} className="flex flex-1 flex-col items-center justify-end gap-3">
+                  <div className="flex h-full w-full items-end justify-center">
+                    <div
+                      className={`w-full max-w-10 rounded-full ${item.active ? "bg-brand-blue shadow-soft" : "bg-slate-200"}`}
+                      style={{ height: `${item.value}%` }}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${item.active ? "text-brand-blue" : "text-slate-400"}`}>
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-[12px] font-semibold text-slate-700">{item.score}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {(athlete.academics.currentSubjects ?? []).length === 0 ? (
+              <EmptyState title="No current subjects" body="Course subjects will appear when academic records are available." />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {athlete.academics.currentSubjects.map((subject) => (
+                  <div key={subject.name} className="rounded-2xl border border-border-subtle/60 bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-slate-900">{subject.name}</p>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                        {subject.grade}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[12px] text-slate-500">{subject.schedule}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </ProfileCard>
+    </div>
+  );
+}
+
+function EventsTab({
+  athlete,
+  summary,
+  eventPage,
+  eventsPerPage,
+  setEventPage,
+  activeOverflowMenuId,
+  setActiveOverflowMenuId,
+  onOpenModal,
+}) {
+  const items = athlete.eventsParticipation?.items ?? [];
+  const totalEventPages = Math.max(1, Math.ceil(items.length / eventsPerPage));
+  const currentEventPage = Math.min(eventPage, totalEventPages - 1);
+  const visibleEvents = items.slice(currentEventPage * eventsPerPage, currentEventPage * eventsPerPage + eventsPerPage);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricTile label="Total Events" value={summary.total} hint="This tracking cycle" tone="blue" />
+        <MetricTile label="Completed" value={summary.completed} hint="Finished participation" tone="gold" />
+        <MetricTile label="Upcoming" value={summary.upcoming} hint="Still scheduled" />
+        <MetricTile label="Attendance" value={summary.attendance} hint="Session presence rate" />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <ProfileCard title="Participation History">
+          {visibleEvents.length === 0 ? (
+            <EmptyState title="No assigned events" body="Assigned training sessions and competitions will appear here." />
+          ) : (
+            <div className="space-y-3">
+              {visibleEvents.map((event) => (
+                <div key={event.id} className="rounded-[22px] border border-border-subtle/60 bg-white p-5 shadow-soft sm:p-6">
+                  <div className="space-y-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-blue-light text-brand-blue">
+                        <CalendarDays className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[16px] font-semibold tracking-tight text-slate-900">{event.title}</p>
+                          <EventStatusPill value={event.status} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-[12px] font-semibold text-slate-600">
+                          <EventMetaChip icon={Trophy} label={event.type} />
+                          <EventMetaChip icon={CalendarDays} label={event.date} accent />
+                          <EventMetaChip icon={MapPin} label={event.venue} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <EventMiniStat label="Participation" value={event.participation} icon={UserRound} tone="mint" />
+                      <EventMiniStat label="Result" value={event.result} icon={Award} tone="sand" />
+                      <EventMiniStat label="Coach" value={event.coach} icon={UserRound} tone="slate" />
+                    </div>
+
+                    <div className="flex flex-col gap-3 border-t border-border-subtle/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold uppercase text-brand-blue">
+                          {getInitials(event.coach)}
+                        </div>
+                        <p className="text-[13px] leading-relaxed text-slate-600">
+                          Coached by <span className="font-semibold text-slate-900">{event.coach}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onOpenModal({ type: "event-details", eventId: event.id })}
+                          className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-4 py-2 text-[12px] font-bold tracking-wide text-brand-blue shadow-soft transition-colors hover:bg-brand-blue-light"
+                        >
+                          <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                          View details
+                        </button>
+                        <OverflowMenu
+                          menuId={`event-${event.id}`}
+                          label={`More actions for ${event.title}`}
+                          activeMenuId={activeOverflowMenuId}
+                          setActiveMenuId={setActiveOverflowMenuId}
+                          items={[
+                            {
+                              label: "Update participation",
+                              onClick: () => onOpenModal({ type: "event-status", eventId: event.id, participation: event.participation, attendance: event.attendance }),
+                            },
+                            {
+                              label: "Add result note",
+                              onClick: () => onOpenModal({ type: "result-note", eventId: event.id, value: "", error: "" }),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {items.length > eventsPerPage && (
+            <div className="mt-5 flex items-center justify-between rounded-2xl border border-brand-blue/15 bg-brand-blue-light/80 px-4 py-3 shadow-soft">
+              <button
+                type="button"
+                onClick={() => setEventPage((page) => Math.max(0, page - 1))}
+                disabled={currentEventPage === 0}
+                className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </button>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-blue">Page {currentEventPage + 1} of {totalEventPages}</p>
+              <button
+                type="button"
+                onClick={() => setEventPage((page) => Math.min(totalEventPages - 1, page + 1))}
+                disabled={currentEventPage >= totalEventPages - 1}
+                className="inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-soft transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </ProfileCard>
+
+        <ProfileCard title="Participation Notes">
+          {(athlete.eventsParticipation.notes ?? []).length === 0 ? (
+            <EmptyState title="No event notes" body="Result notes and participation comments will appear here." />
+          ) : (
+            <div className="space-y-4">
+              {athlete.eventsParticipation.notes.map((entry, index) => (
+                <div key={`${entry.date}-${entry.title}-${index}`} className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-semibold text-slate-900">{entry.title}</p>
+                    <span className="text-[11px] text-slate-500">{entry.date}</span>
+                  </div>
+                  <p className="mt-2 text-[13px] leading-relaxed text-slate-600">{entry.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </ProfileCard>
+      </div>
+    </div>
+  );
+}
+
+function AssetsTab({ athlete, activeOverflowMenuId, setActiveOverflowMenuId, onOpenModal }) {
+  return (
+    <div className="space-y-6">
+      <ProfileCard
+        title="Digital Documents"
+        action={
+          <button
+            type="button"
+            onClick={() => onOpenModal({ type: "upload-document", values: { name: "", status: "Submitted", kind: "pdf", fileName: "" }, errors: {} })}
+            className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold text-white shadow-soft hover:bg-brand-blue-hover"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload
+          </button>
+        }
+      >
+        {(athlete.documents ?? []).length === 0 ? (
+          <EmptyState title="No documents uploaded" body="Upload medical, academic, identification, or scholarship files for this athlete." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {athlete.documents.map((document) => (
+              <div key={document.id} className="rounded-2xl border border-border-subtle/60 p-4">
+                <button
+                  type="button"
+                  onClick={() => onOpenModal({ type: "view-document", documentId: document.id })}
+                  className="flex w-full items-start gap-4 text-left"
+                >
+                  <DocumentIcon kind={document.kind} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-slate-900">{document.name}</p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{document.meta}</p>
+                    <div className="mt-2"><StatusPill status={document.status} /></div>
+                  </div>
+                </button>
+                <div className="mt-4 flex justify-end pr-2">
+                  <OverflowMenu
+                    menuId={`document-${document.id}`}
+                    label={`Document actions for ${document.name}`}
+                    activeMenuId={activeOverflowMenuId}
+                    setActiveMenuId={setActiveOverflowMenuId}
+                    items={[
+                      {
+                        label: "Replace",
+                        onClick: () => onOpenModal({ type: "replace-document", documentId: document.id, values: { name: document.name, fileName: "" }, errors: {} }),
+                      },
+                      {
+                        label: "Remove",
+                        tone: "danger",
+                        onClick: () => onOpenModal({ type: "confirm-remove-document", documentId: document.id }),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ProfileCard>
+
+      <ProfileCard
+        title="Equipment History"
+        action={
+          <button
+            type="button"
+            onClick={() => onOpenModal({ type: "assign-gear", values: { name: "", serial: "", dueDate: "", condition: "Good" }, errors: {} })}
+            className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-[12px] font-bold tracking-wide text-white shadow-soft transition-colors hover:bg-brand-blue-hover"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Assign gear
+          </button>
+        }
+      >
+        {(athlete.equipmentHistory ?? []).length === 0 ? (
+          <EmptyState title="No gear assigned" body="Assigned gear, issue dates, and return status will appear here." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border-subtle/60 bg-slate-50/70 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  <th className="p-5 pl-0">Item Description</th>
+                  <th className="p-5">Issued Date</th>
+                  <th className="p-5">Due Date</th>
+                  <th className="p-5">Status</th>
+                  <th className="p-5 pr-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle/50 text-[13px]">
+                {athlete.equipmentHistory.map((item) => {
+                  const Icon = equipmentIcons[item.icon] ?? equipmentIcons.default;
+                  return (
+                    <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                      <td className="p-5 pl-0">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                            <Icon className="h-5 w-5 opacity-60" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-900">{item.name}</p>
+                            <p className="text-[11px] text-slate-500">Serial: {item.serial}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-5 text-slate-600">{item.issuedDate}</td>
+                      <td className={`p-5 ${item.status === "Overdue" ? "font-semibold text-red-600" : "text-slate-600"}`}>{item.dueDate}</td>
+                      <td className="p-5"><StatusPill status={item.status} /></td>
+                      <td className="p-5 pr-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <SmallAction onClick={() => onOpenModal({ type: "view-gear", gearId: item.id })}>View</SmallAction>
+                          <OverflowMenu
+                            menuId={`gear-${item.id}`}
+                            label={`Gear actions for ${item.name}`}
+                            activeMenuId={activeOverflowMenuId}
+                            setActiveMenuId={setActiveOverflowMenuId}
+                            items={[
+                              {
+                                label: "Returned",
+                                onClick: () => onOpenModal({ type: "confirm-return-gear", gearId: item.id }),
+                              },
+                              {
+                                label: "Issue",
+                                tone: "danger",
+                                onClick: () => onOpenModal({ type: "report-gear", gearId: item.id, value: "", error: "" }),
+                              },
+                            ]}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ProfileCard>
+    </div>
+  );
+}
+
+function AthleteProfileModal({
+  modal,
+  athlete,
+  onClose,
+  onSetModal,
+  onUpdateAthlete,
+  onAddNote,
+  onArchiveAthlete,
+}) {
+  if (!modal) return null;
+
+  const updateModalValues = (key, value) => {
+    onSetModal((current) => ({
+      ...current,
+      values: { ...current.values, [key]: value },
+      errors: { ...current.errors, [key]: undefined },
+    }));
+  };
+
+  const currentEvent = modal.eventId
+    ? athlete.eventsParticipation.items.find((event) => event.id === modal.eventId)
+    : null;
+  const currentDocument = modal.documentId
+    ? athlete.documents.find((document) => document.id === modal.documentId)
+    : null;
+  const currentGear = modal.gearId
+    ? athlete.equipmentHistory.find((item) => item.id === modal.gearId)
+    : null;
+
+  const updateAthlete = (updater, feedback) => {
+    onUpdateAthlete(updater, feedback);
+    onClose();
+  };
+
+  if (modal.type === "note") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add Athlete Note"
+        description="Add a local activity note to this athlete profile."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveProfileNote(modal, onSetModal, onAddNote, athlete, onClose)}>Save note</PrimaryButton></>}
+      >
+        <Field label="Note" error={modal.error}>
+          <TextArea value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value, error: "" }))} />
+        </Field>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "status") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Update Athlete Status"
+        description="Change roster status and scholarship classification locally."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={() => updateAthlete(
+              (current) => ({
+                ...current,
+                status: modal.status,
+                scholarship: modal.scholarship,
+                overview: {
+                  ...current.overview,
+                  recentActivity: [
+                    `${new Date().toLocaleDateString()} - Status changed to ${modal.status}. ${modal.note}`.trim(),
+                    ...(current.overview.recentActivity ?? []),
+                  ],
+                },
+              }),
+              { title: "Status updated", message: `${athlete.name} now shows ${modal.status}.` },
+            )}>Save status</PrimaryButton>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Roster status">
+            <SelectInput value={modal.status} onChange={(event) => onSetModal((current) => ({ ...current, status: event.target.value }))}>
+              {athleteStatuses.map((status) => <option key={status}>{status}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Scholarship">
+            <SelectInput value={modal.scholarship} onChange={(event) => onSetModal((current) => ({ ...current, scholarship: event.target.value }))}>
+              {scholarshipTypes.map((scholarship) => <option key={scholarship}>{scholarship}</option>)}
+            </SelectInput>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Status note">
+              <TextArea value={modal.note} onChange={(event) => onSetModal((current) => ({ ...current, note: event.target.value }))} />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "edit-profile") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Edit Athlete"
+        description="Update key profile, academic, contact, and sport details."
+        size="lg"
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveProfileForm(modal, onSetModal, updateAthlete)}>Save athlete</PrimaryButton></>}
+      >
+        <ProfileEditForm values={modal.values} errors={modal.errors} onChange={updateModalValues} />
+      </Modal>
+    );
+  }
+
+  if (modal.type === "edit-section") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={`Edit ${sectionTitle(modal.section)}`}
+        description="Save changes locally. Cancel restores the previous profile values."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveSectionForm(modal, onSetModal, updateAthlete)}>Save changes</PrimaryButton></>}
+      >
+        <SectionEditForm section={modal.section} values={modal.values} errors={modal.errors ?? {}} onChange={updateModalValues} />
+      </Modal>
+    );
+  }
+
+  if (modal.type === "edit-academics") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Edit Academic Information"
+        description="Update academic status, GPA, standing, attendance, and eligibility."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveAcademics(modal, onSetModal, updateAthlete)}>Save academics</PrimaryButton></>}
+      >
+        <AcademicsForm values={modal.values} errors={modal.errors} onChange={updateModalValues} />
+      </Modal>
+    );
+  }
+
+  if (modal.type === "academic-note") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add Academic Note"
+        description="Capture an adviser, registrar, or athlete services update."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveAcademicNote(modal, onSetModal, updateAthlete)}>Save note</PrimaryButton></>}
+      >
+        <div className="grid gap-4">
+          <Field label="Title" error={modal.errors.title}>
+            <TextInput value={modal.values.title} onChange={(event) => updateModalValues("title", event.target.value)} />
+          </Field>
+          <Field label="Owner">
+            <TextInput value={modal.values.owner} onChange={(event) => updateModalValues("owner", event.target.value)} />
+          </Field>
+          <Field label="Note" error={modal.errors.body}>
+            <TextArea value={modal.values.body} onChange={(event) => updateModalValues("body", event.target.value)} />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "eligibility") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Update Eligibility"
+        description="Update eligibility status and the note shown in the academic summary."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => updateAthlete(
+          (current) => ({
+            ...current,
+            academics: { ...current.academics, eligibility: modal.value, eligibilityNote: modal.note },
+            overview: { ...current.overview, eligibility: modal.value, eligibilityNote: modal.note },
+          }),
+          { title: "Eligibility updated", message: "Academic eligibility was updated locally." },
+        )}>Save eligibility</PrimaryButton></>}
+      >
+        <div className="grid gap-4">
+          <Field label="Eligibility">
+            <TextInput value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value }))} />
+          </Field>
+          <Field label="Note">
+            <TextArea value={modal.note} onChange={(event) => onSetModal((current) => ({ ...current, note: event.target.value }))} />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "academic-history") {
+    return (
+      <Modal open onClose={onClose} title="Academic History" description="Recent academic updates for this athlete." footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}>
+        {(athlete.academics.history ?? []).length === 0 ? (
+          <EmptyState title="No academic history" body="Academic history will appear once records are added." />
+        ) : (
+          <div className="space-y-3">
+            {athlete.academics.history.map((item, index) => (
+              <div key={`${item.date}-${index}`} className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+                <p className="text-[12px] font-bold text-brand-blue">{item.date}</p>
+                <p className="mt-1 text-[13px] leading-6 text-slate-600">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+    );
+  }
+
+  if (modal.type === "event-details" && currentEvent) {
+    return (
+      <Modal open onClose={onClose} title={currentEvent.title} description={`${currentEvent.type} | ${currentEvent.date} | ${currentEvent.venue}`} footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}>
+        <div className="space-y-4">
+          <FeedbackPanel tone="info" title={currentEvent.result}>{currentEvent.summary || "No event summary recorded."}</FeedbackPanel>
+          <div className="flex flex-wrap gap-2">
+            {(currentEvent.metrics ?? []).map((metric) => (
+              <span key={metric} className="rounded-full bg-brand-blue-light px-3 py-1.5 text-[12px] font-semibold text-brand-blue">{metric}</span>
+            ))}
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "event-status" && currentEvent) {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Update Participation"
+        description={currentEvent.title}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => updateEvent(currentEvent.id, updateAthlete, { participation: modal.participation, attendance: modal.attendance })}>Save participation</PrimaryButton></>}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Participation">
+            <SelectInput value={modal.participation} onChange={(event) => onSetModal((current) => ({ ...current, participation: event.target.value }))}>
+              <option>Assigned</option>
+              <option>Confirmed</option>
+              <option>Participated</option>
+              <option>Absent</option>
+              <option>Excused</option>
+            </SelectInput>
+          </Field>
+          <Field label="Attendance">
+            <SelectInput value={modal.attendance} onChange={(event) => onSetModal((current) => ({ ...current, attendance: event.target.value }))}>
+              <option>Scheduled</option>
+              <option>Present</option>
+              <option>Absent</option>
+              <option>Excused</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "result-note" && currentEvent) {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Add Result Note"
+        description={currentEvent.title}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveResultNote(modal, onSetModal, updateAthlete, currentEvent)}>Save note</PrimaryButton></>}
+      >
+        <Field label="Result note" error={modal.error}>
+          <TextArea value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value, error: "" }))} />
+        </Field>
+      </Modal>
+    );
+  }
+
+  if ((modal.type === "upload-document" || modal.type === "replace-document") && (modal.type === "upload-document" || currentDocument)) {
+    const isReplace = modal.type === "replace-document";
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={isReplace ? "Replace Document" : "Upload Document"}
+        description={isReplace ? currentDocument.name : "Create a frontend-only file record."}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveDocument(modal, onSetModal, updateAthlete, currentDocument)}>Save document</PrimaryButton></>}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Document name" error={modal.errors.name}>
+            <TextInput value={modal.values.name} onChange={(event) => updateModalValues("name", event.target.value)} />
+          </Field>
+          <Field label="Status">
+            <SelectInput value={modal.values.status ?? currentDocument?.status ?? "Submitted"} onChange={(event) => updateModalValues("status", event.target.value)}>
+              <option>Submitted</option>
+              <option>Missing</option>
+              <option>Expired</option>
+              <option>Pending Review</option>
+            </SelectInput>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Mock file selection" error={modal.errors.fileName}>
+              <input
+                type="file"
+                onChange={(event) => updateModalValues("fileName", event.target.files?.[0]?.name ?? "")}
+                className="w-full rounded-xl border border-dashed border-border-subtle bg-slate-50 px-4 py-4 text-[13px] text-slate-600"
+              />
+              {modal.values.fileName && <p className="mt-2 text-[12px] font-semibold text-brand-blue">Selected: {modal.values.fileName}</p>}
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "view-document" && currentDocument) {
+    return (
+      <Modal open onClose={onClose} title={currentDocument.name} description={currentDocument.meta} footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}>
+        <FeedbackPanel tone="success" title={currentDocument.status}>
+          File preview is not connected yet, but this record can be replaced or removed from the profile locally.
+        </FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "confirm-remove-document" && currentDocument) {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Remove Document"
+        description={`${currentDocument.name} will be removed from the local profile.`}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => updateAthlete(
+          (current) => ({ ...current, documents: current.documents.filter((document) => document.id !== currentDocument.id) }),
+          { tone: "warning", title: "Document removed", message: "The document record was removed locally." },
+        )}>Remove document</PrimaryButton></>}
+      >
+        <FeedbackPanel tone="warning" title="Confirmation required">This does not delete a real file because storage is not connected yet.</FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "assign-gear") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Assign Gear"
+        description="Issue a frontend-only equipment record to this athlete."
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => saveGear(modal, onSetModal, updateAthlete)}>Assign gear</PrimaryButton></>}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Item name" error={modal.errors.name}>
+            <TextInput value={modal.values.name} onChange={(event) => updateModalValues("name", event.target.value)} />
+          </Field>
+          <Field label="Serial" error={modal.errors.serial}>
+            <TextInput value={modal.values.serial} onChange={(event) => updateModalValues("serial", event.target.value)} />
+          </Field>
+          <Field label="Due date">
+            <TextInput type="date" value={modal.values.dueDate} onChange={(event) => updateModalValues("dueDate", event.target.value)} />
+          </Field>
+          <Field label="Condition">
+            <SelectInput value={modal.values.condition} onChange={(event) => updateModalValues("condition", event.target.value)}>
+              <option>Good</option>
+              <option>Needs review</option>
+              <option>Damaged</option>
+            </SelectInput>
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
+
+  if ((modal.type === "view-gear" || modal.type === "confirm-return-gear" || modal.type === "report-gear") && currentGear) {
+    if (modal.type === "view-gear") {
+      return (
+        <Modal open onClose={onClose} title={currentGear.name} description={`Serial ${currentGear.serial}`} footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DetailField label="Issued date" value={currentGear.issuedDate} />
+            <DetailField label="Due date" value={currentGear.dueDate} />
+            <DetailField label="Status" value={currentGear.status} />
+            <DetailField label="Condition" value={currentGear.condition} />
+          </div>
+        </Modal>
+      );
+    }
+
+    if (modal.type === "confirm-return-gear") {
+      return (
+        <Modal
+          open
+          onClose={onClose}
+          title="Mark Gear Returned"
+          description={`${currentGear.name} will be marked returned in local state.`}
+          footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton onClick={() => updateGear(currentGear.id, updateAthlete, { status: "Returned", dueDate: new Date().toISOString().slice(0, 10) }, "Gear returned")}>Mark returned</PrimaryButton></>}
+        >
+          <FeedbackPanel tone="info" title="Return confirmation">This updates the profile table only. Inventory reconciliation can be added later.</FeedbackPanel>
+        </Modal>
+      );
+    }
+
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Report Gear Issue"
+        description={currentGear.name}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => reportGearIssue(modal, onSetModal, updateAthlete, currentGear)}>Save issue</PrimaryButton></>}
+      >
+        <Field label="Issue details" error={modal.error}>
+          <TextArea value={modal.value} onChange={(event) => onSetModal((current) => ({ ...current, value: event.target.value, error: "" }))} placeholder="Describe damaged or lost gear..." />
+        </Field>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "confirm-archive") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Archive Athlete"
+        description={`${athlete.name} will be marked archived in local state.`}
+        footer={<><SecondaryButton onClick={onClose}>Cancel</SecondaryButton><PrimaryButton tone="danger" onClick={() => { onArchiveAthlete(athlete.id, "Archived"); onClose(); }}>Archive athlete</PrimaryButton></>}
+      >
+        <FeedbackPanel tone="warning" title="Confirmation required">This action is local-only until backend persistence is connected.</FeedbackPanel>
+      </Modal>
+    );
+  }
+
+  return null;
+}
+
+function ProfileEditForm({ values, errors, onChange }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Full name" error={errors.name}>
+        <TextInput value={values.name} onChange={(event) => onChange("name", event.target.value)} />
+      </Field>
+      <Field label="Student ID" error={errors.id}>
+        <TextInput value={values.id} onChange={(event) => onChange("id", event.target.value)} />
+      </Field>
+      <Field label="Sport">
+        <SelectInput value={values.sport} onChange={(event) => onChange("sport", event.target.value)}>
+          {sports.map((sport) => <option key={sport}>{sport}</option>)}
+        </SelectInput>
+      </Field>
+      <Field label="Event / Position">
+        <TextInput value={values.event} onChange={(event) => onChange("event", event.target.value)} />
+      </Field>
+      <Field label="Coach">
+        <TextInput value={values.coach} onChange={(event) => onChange("coach", event.target.value)} />
+      </Field>
+      <Field label="Year level">
+        <SelectInput value={values.year} onChange={(event) => onChange("year", event.target.value)}>
+          {yearLevels.map((year) => <option key={year}>{year}</option>)}
+        </SelectInput>
+      </Field>
+      <Field label="Department" error={errors.department}>
+        <TextInput value={values.department} onChange={(event) => onChange("department", event.target.value)} />
+      </Field>
+      <Field label="Course">
+        <TextInput value={values.course} onChange={(event) => onChange("course", event.target.value)} />
+      </Field>
+      <Field label="Email" error={errors.email}>
+        <TextInput value={values.email} onChange={(event) => onChange("email", event.target.value)} />
+      </Field>
+      <Field label="Phone">
+        <TextInput value={values.phone} onChange={(event) => onChange("phone", event.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
+function SectionEditForm({ section, values, errors, onChange }) {
+  if (section === "personal") {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {["birthdate", "age", "gender", "nationality", "height", "weight", "bloodType", "side"].map((field) => (
+          <Field key={field} label={labelize(field)}>
+            <TextInput value={values[field] ?? ""} onChange={(event) => onChange(field, event.target.value)} type={field === "birthdate" ? "date" : "text"} />
+          </Field>
+        ))}
+      </div>
+    );
+  }
+
+  if (section === "sport") {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Sport">
+          <SelectInput value={values.sport} onChange={(event) => onChange("sport", event.target.value)}>
+            {sports.map((sport) => <option key={sport}>{sport}</option>)}
+          </SelectInput>
+        </Field>
+        <Field label="Event / Position">
+          <TextInput value={values.event} onChange={(event) => onChange("event", event.target.value)} />
+        </Field>
+        <Field label="Coach">
+          <TextInput value={values.coach} onChange={(event) => onChange("coach", event.target.value)} />
+        </Field>
+        <Field label="Scholarship">
+          <SelectInput value={values.scholarship} onChange={(event) => onChange("scholarship", event.target.value)}>
+            {scholarshipTypes.map((scholarship) => <option key={scholarship}>{scholarship}</option>)}
+          </SelectInput>
+        </Field>
+      </div>
+    );
+  }
+
+  if (section === "emergency") {
+    return (
+      <div className="grid gap-4">
+        <Field label="Name" error={errors.name}>
+          <TextInput value={values.name} onChange={(event) => onChange("name", event.target.value)} />
+        </Field>
+        <Field label="Relationship">
+          <TextInput value={values.relationship} onChange={(event) => onChange("relationship", event.target.value)} />
+        </Field>
+        <Field label="Phone">
+          <TextInput value={values.phone} onChange={(event) => onChange("phone", event.target.value)} />
+        </Field>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Field label="Phone">
+        <TextInput value={values.phone} onChange={(event) => onChange("phone", event.target.value)} />
+      </Field>
+      <Field label="Email" error={errors.email}>
+        <TextInput value={values.email} onChange={(event) => onChange("email", event.target.value)} />
+      </Field>
+      <Field label="Address">
+        <TextArea value={values.address} onChange={(event) => onChange("address", event.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
+function AcademicsForm({ values, errors, onChange }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="GPA" error={errors.gpa}>
+        <TextInput value={values.gpa} onChange={(event) => onChange("gpa", event.target.value)} />
+      </Field>
+      <Field label="Standing">
+        <SelectInput value={values.standing} onChange={(event) => onChange("standing", event.target.value)}>
+          {academicStandings.map((standing) => <option key={standing}>{standing}</option>)}
+        </SelectInput>
+      </Field>
+      <Field label="Attendance">
+        <TextInput value={values.attendance} onChange={(event) => onChange("attendance", event.target.value)} />
+      </Field>
+      <Field label="Units">
+        <TextInput value={values.units} onChange={(event) => onChange("units", event.target.value)} />
+      </Field>
+      <Field label="Term">
+        <TextInput value={values.term} onChange={(event) => onChange("term", event.target.value)} />
+      </Field>
+      <Field label="Eligibility">
+        <TextInput value={values.eligibility} onChange={(event) => onChange("eligibility", event.target.value)} />
+      </Field>
+      <div className="sm:col-span-2">
+        <Field label="Eligibility note">
+          <TextArea value={values.eligibilityNote} onChange={(event) => onChange("eligibilityNote", event.target.value)} />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function ProfileCard({ title, action, children }) {
+  return (
+    <section className="rounded-[24px] border border-border-subtle/50 bg-surface-card p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <h3 className="text-[16px] font-bold text-slate-900">{title}</h3>
         {action}
@@ -779,13 +1383,9 @@ function ProfileBadge({ icon: Icon, label, value }) {
     <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/85 p-4">
       <div className="flex items-start gap-2 text-slate-400">
         <Icon className="h-4 w-4" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] leading-[1.35]">
-          {label}
-        </p>
+        <p className="text-[10px] font-bold uppercase leading-[1.35] tracking-[0.18em]">{label}</p>
       </div>
-      <p className="mt-3 text-[15px] font-semibold leading-snug text-slate-900">
-        {value}
-      </p>
+      <p className="mt-3 text-[15px] font-semibold leading-snug text-slate-900">{value}</p>
     </div>
   );
 }
@@ -793,10 +1393,8 @@ function ProfileBadge({ icon: Icon, label, value }) {
 function DetailField({ label, value }) {
   return (
     <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-[14px] font-semibold text-slate-900">{value}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2 text-[14px] font-semibold text-slate-900">{value || "Pending"}</p>
     </div>
   );
 }
@@ -808,9 +1406,7 @@ function InfoRow({ icon: Icon, label, value }) {
         <Icon className="h-4 w-4" />
       </div>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          {label}
-        </p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{label}</p>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-700">{value}</p>
       </div>
     </div>
@@ -827,34 +1423,149 @@ function MetricTile({ label, value, hint, tone = "default" }) {
 
   return (
     <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2.5 text-[20px] font-extrabold tracking-tight text-slate-900">
-        {value}
-      </p>
-      <span className={`mt-2.5 inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${toneClass}`}>
-        {hint}
-      </span>
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2.5 text-[20px] font-extrabold tracking-tight text-slate-900">{value}</p>
+      <span className={`mt-2.5 inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${toneClass}`}>{hint}</span>
     </div>
+  );
+}
+
+function ActionCard({ icon: Icon, title, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4 text-left text-[13px] font-bold text-slate-700 transition-colors hover:border-brand-blue/20 hover:bg-brand-blue-light"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-brand-blue shadow-soft">
+        <Icon className="h-4 w-4" />
+      </span>
+      {title}
+    </button>
+  );
+}
+
+function AlertCard({ alert }) {
+  const attention = alert.level === "attention";
+  return (
+    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-4">
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${attention ? "bg-amber-100 text-amber-700" : "bg-brand-blue-light text-brand-blue"}`}>
+          {attention ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-slate-900">{alert.title}</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-600">{alert.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ title, body }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border-subtle bg-slate-50/60 p-5 text-center">
+      <p className="text-[14px] font-bold text-slate-800">{title}</p>
+      <p className="mt-1 text-[13px] leading-6 text-slate-500">{body}</p>
+    </div>
+  );
+}
+
+function SmallAction({ children, onClick, tone = "default" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+        tone === "danger"
+          ? "border-red-100 bg-red-50 text-red-700 hover:bg-red-100"
+          : "border-border-subtle bg-white text-slate-600 hover:bg-slate-50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function OverflowMenu({ menuId, label, items, activeMenuId, setActiveMenuId }) {
+  const rootRef = useRef(null);
+  const isOpen = activeMenuId === menuId;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setActiveMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isOpen, setActiveMenuId]);
+
+  return (
+    <div ref={rootRef} className="relative inline-block text-left">
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={isOpen}
+        onClick={() => setActiveMenuId(isOpen ? null : menuId)}
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-brand-blue"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
+          {items.map((item) => (
+            <OverflowMenuItem
+              key={item.label}
+              label={item.label}
+              tone={item.tone}
+              onClick={() => {
+                item.onClick();
+                setActiveMenuId(null);
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverflowMenuItem({ label, onClick, tone = "default" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors ${
+        tone === "danger"
+          ? "text-red-600 hover:bg-red-50"
+          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
 function StatusPill({ status }) {
   const tone =
-    status === "In Possession"
+    status === "Submitted" || status === "Returned" || status === "In Possession"
       ? "bg-green-50 text-green-700"
-      : status === "Overdue"
-        ? "bg-red-50 text-red-700"
-        : "bg-slate-100 text-slate-600";
+      : status === "Pending Review" || status === "Overdue"
+        ? "bg-amber-50 text-amber-700"
+        : status === "Missing" || status === "Expired" || status === "Damaged/Lost"
+          ? "bg-red-50 text-red-700"
+          : "bg-slate-100 text-slate-600";
 
-  return (
-    <span
-      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}
-    >
-      {status}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}>{status}</span>;
 }
 
 function EventStatusPill({ value }) {
@@ -869,187 +1580,369 @@ function EventStatusPill({ value }) {
             ? "bg-red-50 text-red-700"
             : "bg-slate-100 text-slate-600";
 
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}
-    >
-      {value}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tone}`}>{value}</span>;
 }
 
-function EventMiniStat({ label, value }) {
+function EventMiniStat({ label, value, icon: Icon, tone = "mint" }) {
+  const toneStyles = {
+    mint: "border-emerald-100 bg-emerald-50/80 text-emerald-950",
+    sand: "border-amber-100 bg-amber-50/80 text-amber-950",
+    slate: "border-slate-800 bg-slate-800 text-white",
+  };
+
   return (
-    <div className="rounded-2xl border border-border-subtle/60 bg-slate-50/80 p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-        {label}
-      </p>
-      <p className="mt-1.5 text-[12px] font-semibold leading-snug text-slate-800">
-        {value}
-      </p>
+    <div className={`rounded-2xl border p-4 shadow-sm ${toneStyles[tone]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${tone === "slate" ? "text-slate-300" : "text-slate-400"}`}>
+            {label}
+          </p>
+          <p className={`mt-2 text-[13px] font-semibold leading-snug ${tone === "slate" ? "text-white" : "text-slate-900"}`}>
+            {value}
+          </p>
+        </div>
+        {Icon && (
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone === "slate" ? "bg-white/10 text-white" : "bg-white text-slate-500"}`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function AthleteProfileModal({ modal, onClose, athlete }) {
-  if (!modal) return null;
-
-  const footer = (
-    <>
-      <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-      <PrimaryButton onClick={onClose}>Save</PrimaryButton>
-    </>
-  );
-
-  if (modal.type === "status") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Edit User"
-        description={`Update profile details and athlete settings for ${athlete.name}.`}
-        footer={footer}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Medical status">
-            <SelectInput defaultValue={athlete.status}>
-              <option>Cleared</option>
-              <option>Injured</option>
-              <option>Pending Review</option>
-            </SelectInput>
-          </Field>
-          <Field label="Scholarship">
-            <SelectInput defaultValue={athlete.scholarship}>
-              <option>Full Scholarship</option>
-              <option>Partial Scholarship</option>
-              <option>Walk-on</option>
-            </SelectInput>
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Status note">
-              <TextArea placeholder="Summarize why this status is being updated." />
-            </Field>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "report") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Academic Performance Report"
-        description="Prepare a detailed report for coaching and compliance review."
-        footer={
-          <>
-            <SecondaryButton onClick={onClose}>Close</SecondaryButton>
-            <PrimaryButton onClick={onClose}>Generate report</PrimaryButton>
-          </>
-        }
-      >
-        <FeedbackPanel tone="info" title={`${athlete.gpa} GPA currently tracked`}>
-          The modal is ready for historical grade, eligibility, and attendance
-          data once the backend is connected.
-        </FeedbackPanel>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "document") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Add Document"
-        description="Register a new file record on the athlete profile."
-        footer={footer}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Document name">
-            <TextInput placeholder="Medical clearance" />
-          </Field>
-          <Field label="Document type">
-            <SelectInput defaultValue="Medical">
-              <option>Medical</option>
-              <option>Scholarship</option>
-              <option>Identification</option>
-              <option>Academic</option>
-            </SelectInput>
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Notes">
-              <TextArea placeholder="Expiration date, verification notes, or owner..." />
-            </Field>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "view-document") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title={modal.payload}
-        description="Document details are shown here until file preview storage is connected."
-        footer={<PrimaryButton onClick={onClose}>Done</PrimaryButton>}
-      >
-        <FeedbackPanel tone="success" title="Verified profile document">
-          This placeholder detail view can later include file preview, expiry
-          status, download, and audit trail actions.
-        </FeedbackPanel>
-      </Modal>
-    );
-  }
-
-  if (modal.type === "issue") {
-    return (
-      <Modal
-        open
-        onClose={onClose}
-        title="Issue Equipment"
-        description={`Assign a new item to ${athlete.name}.`}
-        footer={footer}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Asset">
-            <TextInput placeholder="Search equipment ID or name" />
-          </Field>
-          <Field label="Due date">
-            <TextInput type="date" />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Issue notes">
-              <TextArea placeholder="Fit notes, coach authorization, or return conditions..." />
-            </Field>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
+function EventMetaChip({ icon: Icon, label, accent = false }) {
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title="Equipment Actions"
-      description={`Manage ${modal.payload}.`}
-      footer={footer}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <button className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:border-brand-blue/20 hover:bg-brand-blue-light">
-          View details
-        </button>
-        <button className="rounded-2xl border border-border-subtle/50 bg-slate-50 p-4 text-left text-[13px] font-bold text-slate-700 hover:border-brand-blue/20 hover:bg-brand-blue-light">
-          Mark returned
-        </button>
-        <button className="rounded-2xl border border-red-100 bg-red-50 p-4 text-left text-[13px] font-bold text-red-700 hover:bg-red-100">
-          Report issue
-        </button>
-      </div>
-    </Modal>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ring-1 ${accent ? "bg-brand-blue-light text-brand-blue ring-brand-blue/10" : "bg-slate-50 text-slate-600 ring-slate-200/70"}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </span>
   );
+}
+
+function DocumentIcon({ kind }) {
+  return (
+    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${kind === "pdf" ? "bg-red-50 text-red-500" : kind === "image" ? "bg-slate-100 text-slate-500" : "bg-brand-blue-light text-brand-blue"}`}>
+      {kind === "image" ? <ImageIcon className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+    </div>
+  );
+}
+
+function profileToForm(athlete) {
+  return {
+    name: athlete.name,
+    id: athlete.id,
+    sport: athlete.sport,
+    event: athlete.event,
+    coach: athlete.coach,
+    year: athlete.year,
+    department: athlete.department,
+    course: athlete.course ?? "",
+    email: athlete.contact.email,
+    phone: athlete.contact.phone,
+  };
+}
+
+function getInitials(name) {
+  return (
+    name
+      ?.split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "--"
+  );
+}
+
+function personalToForm(athlete) {
+  return { ...athlete.personal };
+}
+
+function contactToForm(athlete) {
+  return { phone: athlete.contact.phone, email: athlete.contact.email, address: athlete.contact.address };
+}
+
+function emergencyToForm(athlete) {
+  return { ...athlete.contact.emergency };
+}
+
+function sportToForm(athlete) {
+  return { sport: athlete.sport, event: athlete.event, coach: athlete.coach, scholarship: athlete.scholarship };
+}
+
+function academicsToForm(athlete) {
+  return {
+    gpa: String(athlete.gpa),
+    standing: athlete.standing,
+    attendance: athlete.academics.attendance,
+    units: athlete.academics.units,
+    term: athlete.academics.term,
+    eligibility: athlete.academics.eligibility,
+    eligibilityNote: athlete.academics.eligibilityNote,
+  };
+}
+
+function saveProfileForm(modal, onSetModal, updateAthlete) {
+  const errors = validateProfileForm(modal.values);
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      name: modal.values.name.trim(),
+      id: modal.values.id.trim(),
+      sport: modal.values.sport,
+      event: modal.values.event.trim(),
+      coach: modal.values.coach.trim(),
+      year: modal.values.year,
+      department: modal.values.department.trim(),
+      course: modal.values.course.trim(),
+      contact: {
+        ...athlete.contact,
+        email: modal.values.email.trim(),
+        phone: modal.values.phone.trim(),
+      },
+    }),
+    { title: "Athlete updated", message: "Profile details were updated locally." },
+  );
+}
+
+function saveSectionForm(modal, onSetModal, updateAthlete) {
+  const errors = {};
+  if (modal.section === "contact" && modal.values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modal.values.email)) {
+    errors.email = "Enter a valid email address.";
+  }
+  if (modal.section === "emergency" && !modal.values.name.trim()) {
+    errors.name = "Emergency contact name is required.";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => {
+      if (modal.section === "personal") return { ...athlete, personal: { ...athlete.personal, ...modal.values } };
+      if (modal.section === "sport") return { ...athlete, ...modal.values };
+      if (modal.section === "emergency") {
+        return { ...athlete, contact: { ...athlete.contact, emergency: { ...modal.values } } };
+      }
+      return { ...athlete, contact: { ...athlete.contact, ...modal.values } };
+    },
+    { title: "Details updated", message: `${sectionTitle(modal.section)} was updated locally.` },
+  );
+}
+
+function saveAcademics(modal, onSetModal, updateAthlete) {
+  const errors = {};
+  const gpa = Number(modal.values.gpa);
+  if (Number.isNaN(gpa) || gpa < 0 || gpa > 4) errors.gpa = "GPA must be between 0 and 4.";
+
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      gpa,
+      standing: modal.values.standing,
+      academics: {
+        ...athlete.academics,
+        attendance: modal.values.attendance,
+        units: modal.values.units,
+        term: modal.values.term,
+        eligibility: modal.values.eligibility,
+        eligibilityNote: modal.values.eligibilityNote,
+      },
+    }),
+    { title: "Academics updated", message: "Academic information was saved locally." },
+  );
+}
+
+function saveAcademicNote(modal, onSetModal, updateAthlete) {
+  const errors = {};
+  if (!modal.values.title.trim()) errors.title = "Title is required.";
+  if (!modal.values.body.trim()) errors.body = "Note is required.";
+
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      academics: {
+        ...athlete.academics,
+        notes: [
+          {
+            ...modal.values,
+            title: modal.values.title.trim(),
+            owner: modal.values.owner.trim() || "Athlete Services",
+            body: modal.values.body.trim(),
+            date: new Date().toLocaleDateString(),
+          },
+          ...(athlete.academics.notes ?? []),
+        ],
+      },
+    }),
+    { title: "Academic note added", message: "The note was added to academic monitoring." },
+  );
+}
+
+function saveProfileNote(modal, onSetModal, onAddNote, athlete, onClose) {
+  const note = modal.value.trim();
+  if (!note) {
+    onSetModal((current) => ({ ...current, error: "Add a short note before saving." }));
+    return;
+  }
+
+  onAddNote(athlete.id, `${new Date().toLocaleDateString()} - ${note}`);
+  onClose();
+}
+
+function updateEvent(eventId, updateAthlete, patch) {
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      eventsParticipation: {
+        ...athlete.eventsParticipation,
+        items: athlete.eventsParticipation.items.map((event) => (event.id === eventId ? { ...event, ...patch } : event)),
+      },
+    }),
+    { title: "Participation updated", message: "Event participation was updated locally." },
+  );
+}
+
+function saveResultNote(modal, onSetModal, updateAthlete, event) {
+  const note = modal.value.trim();
+  if (!note) {
+    onSetModal((current) => ({ ...current, error: "Add a note before saving." }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      eventsParticipation: {
+        ...athlete.eventsParticipation,
+        notes: [
+          { title: event.title, date: new Date().toLocaleDateString(), description: note },
+          ...(athlete.eventsParticipation.notes ?? []),
+        ],
+      },
+    }),
+    { title: "Result note added", message: "The event note was added locally." },
+  );
+}
+
+function saveDocument(modal, onSetModal, updateAthlete, currentDocument) {
+  const errors = {};
+  if (!modal.values.name.trim()) errors.name = "Document name is required.";
+  if (!modal.values.fileName && !currentDocument) errors.fileName = "Select a file for the mock upload.";
+
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => {
+      const document = {
+        id: currentDocument?.id ?? `DOC-${Date.now()}`,
+        name: modal.values.name.trim(),
+        meta: `${modal.values.fileName || currentDocument.meta} | local mock record`,
+        kind: modal.values.kind ?? currentDocument?.kind ?? "pdf",
+        status: modal.values.status ?? currentDocument?.status ?? "Submitted",
+      };
+
+      return {
+        ...athlete,
+        documents: currentDocument
+          ? athlete.documents.map((item) => (item.id === currentDocument.id ? document : item))
+          : [document, ...athlete.documents],
+      };
+    },
+    { title: currentDocument ? "Document replaced" : "Document uploaded", message: "The document list was updated locally." },
+  );
+}
+
+function saveGear(modal, onSetModal, updateAthlete) {
+  const errors = {};
+  if (!modal.values.name.trim()) errors.name = "Item name is required.";
+  if (!modal.values.serial.trim()) errors.serial = "Serial is required.";
+
+  if (Object.keys(errors).length > 0) {
+    onSetModal((current) => ({ ...current, errors }));
+    return;
+  }
+
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      equipmentHistory: [
+        {
+          id: `GEAR-${Date.now()}`,
+          name: modal.values.name.trim(),
+          serial: modal.values.serial.trim(),
+          issuedDate: new Date().toISOString().slice(0, 10),
+          dueDate: modal.values.dueDate || "Pending",
+          status: "In Possession",
+          condition: modal.values.condition,
+          icon: "default",
+        },
+        ...athlete.equipmentHistory,
+      ],
+    }),
+    { title: "Gear assigned", message: "The equipment record was added locally." },
+  );
+}
+
+function updateGear(gearId, updateAthlete, patch, title) {
+  updateAthlete(
+    (athlete) => ({
+      ...athlete,
+      equipmentHistory: athlete.equipmentHistory.map((item) => (item.id === gearId ? { ...item, ...patch } : item)),
+    }),
+    { title, message: "Gear status was updated locally." },
+  );
+}
+
+function reportGearIssue(modal, onSetModal, updateAthlete, gear) {
+  const issue = modal.value.trim();
+  if (!issue) {
+    onSetModal((current) => ({ ...current, error: "Describe the damaged or lost item." }));
+    return;
+  }
+
+  updateGear(gear.id, updateAthlete, { status: "Damaged/Lost", condition: issue }, "Gear issue reported");
+}
+
+function validateProfileForm(values) {
+  const errors = {};
+  if (!values.name.trim()) errors.name = "Full name is required.";
+  if (!values.id.trim()) errors.id = "Student ID is required.";
+  if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = "Enter a valid email address.";
+  if (!values.department.trim()) errors.department = "Department is required.";
+  return errors;
+}
+
+function sectionTitle(section) {
+  const titles = {
+    personal: "Personal Record",
+    contact: "Contact Details",
+    emergency: "Emergency Contact",
+    sport: "Sport Profile",
+  };
+  return titles[section] ?? "Profile Section";
+}
+
+function labelize(value) {
+  return value.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
 }

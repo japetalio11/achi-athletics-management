@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   Award,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock3,
