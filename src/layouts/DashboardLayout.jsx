@@ -28,7 +28,10 @@ export function DashboardLayout({ children }) {
   });
 
   return (
-    <div className="flex h-screen bg-surface-bg overflow-hidden font-sans">
+    <div className="relative flex h-screen overflow-hidden font-sans">
+      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(15,58,110,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,58,110,0.04)_1px,transparent_1px)] [background-size:58px_58px]" />
+      <div className="pointer-events-none absolute right-[-140px] top-[30%] h-[360px] w-[360px] rounded-full border border-brand-gold/20 bg-brand-gold/10 blur-3xl" />
+
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Topbar />

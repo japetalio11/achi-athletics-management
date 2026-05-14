@@ -33,12 +33,13 @@ export function Sidebar() {
     <aside className="w-[260px] bg-surface-card border-r border-border-subtle text-slate-600 flex flex-col h-screen flex-shrink-0 relative z-20">
       {/* Brand */}
       <div className="p-8 pb-6">
-        <h1 className="text-brand-blue text-[18px] font-bold tracking-tight">
-          ADNU Athletics
-        </h1>
-        <p className="text-[11px] text-slate-400 mt-0.5 font-medium uppercase tracking-wider">
-          Management Hub
-        </p>
+        <Link to="/dashboard" className="flex items-center gap-3">
+          <img src="/ADNU_Logo.png" alt="ADNU logo" className="h-10 w-10 rounded-full object-cover shadow-sm" />
+          <div>
+            <h1 className="text-brand-blue text-[18px] font-bold tracking-tight">ADNU Athletics</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium uppercase tracking-wider">Management Hub</p>
+          </div>
+        </Link>
       </div>
 
       {/* Navigation */}

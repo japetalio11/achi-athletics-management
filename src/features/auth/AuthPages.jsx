@@ -44,17 +44,20 @@ function PasswordInput({ value, onChange, placeholder = "Enter password" }) {
 
 function AuthShell({ eyebrow, title, description, children, sideTitle, sideCopy }) {
   return (
-    <div className="min-h-screen bg-surface-bg px-4 py-8 text-slate-800 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(15,74,166,0.12),_transparent_32%),linear-gradient(180deg,_#f8fbff_0%,_#eef4fb_100%)] text-slate-800 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(15,58,110,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,58,110,0.04)_1px,transparent_1px)] [background-size:58px_58px]" />
+      <div className="pointer-events-none absolute right-[-140px] top-[30%] h-[360px] w-[360px] rounded-full border border-brand-gold/20 bg-brand-gold/10 blur-3xl" />
+
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl overflow-hidden rounded-[28px] border border-border-subtle/70 bg-surface-card shadow-float lg:grid-cols-[0.95fr_1.05fr]">
         <section className="flex flex-col justify-between gap-10 bg-brand-blue p-8 text-white sm:p-10">
           <div>
-            <div className="flex items-center justify-between gap-4">
-              <Link
-                to="/"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-              >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                ADNU Athletics
+              <div className="flex items-center justify-between gap-4">
+              <Link to="/" className="inline-flex items-center gap-3">
+                <img src="/ADNU_Logo.png" alt="ADNU logo" className="h-10 w-10 rounded-full object-cover shadow-sm" />
+                <div className="inline-flex flex-col">
+                  <span className="text-[12px] font-black uppercase tracking-[0.24em] text-white">ADNU Athletics</span>
+                  <span className="text-[10px] text-white/80">Ateneo de Naga University</span>
+                </div>
               </Link>
             </div>
             <div className="mt-16 max-w-md">

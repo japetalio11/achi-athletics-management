@@ -15,6 +15,9 @@ import {
   VerificationSuccessPage,
 } from "./features/auth/AuthPages";
 import { LandingPage } from "./features/public/LandingPage";
+import { PublicEventsPage } from "./features/public/PublicEventsPage";
+import { PublicFacilityRequestPage } from "./features/public/PublicFacilityRequestPage";
+import { PublicItemRequestPage } from "./features/public/PublicItemRequestPage";
 import { ReportsPage } from "./features/system/ReportsPage";
 import { NotFoundPage, UnauthorizedPage } from "./features/system/RouteStatusPages";
 import { useAuth } from "./contexts/AuthContext";
@@ -48,6 +51,9 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/public/events" element={<PublicEventsPage />} />
+      <Route path="/public/facility-request" element={<PublicFacilityRequestPage />} />
+      <Route path="/public/item-request" element={<PublicItemRequestPage />} />
 
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
