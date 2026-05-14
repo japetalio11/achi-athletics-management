@@ -1,16 +1,18 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import {
+  Archive,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ClipboardCopy,
   ListChecks,
-  MoreHorizontal,
   Megaphone,
   PencilLine,
   Plus,
   Search,
   SlidersHorizontal,
+  Trash2,
   Trophy,
   UserPlus,
 } from "lucide-react";
@@ -28,6 +30,8 @@ import {
 } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { useNavigation } from "../../contexts/NavigationContext";
+import { ActionMenu } from "../../components/ui/ActionMenu";
 import {
   Field,
   FeedbackPanel,
@@ -49,6 +53,7 @@ import {
   sportCategories,
   visibilityStatuses,
 } from "./eventsMockData";
+import { EventInfoPage } from "./EventInfoPage";
 
 const locales = {
   "en-US": enUS,
@@ -149,11 +154,13 @@ const participationBadgeClasses = {
 const resultVisibilityOptions = ["Internal Only", "Public"];
 
 export function EventsView() {
+  const { selectedEvent, selectEvent, clearSelectedEvent, setSelectedEvent } = useNavigation();
   const [events, setEvents] = useState(mockEvents);
   const [activeView, setActiveView] = useState("list");
   const [filters, setFilters] = useState(defaultFilters);
   const [modal, setModal] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const [currentDate, setCurrentDate] = useState(parseISO(mockEvents[0].startDate));
   const [selectedDate, setSelectedDate] = useState(parseISO(mockEvents[0].startDate));
   const [selectedEventId, setSelectedEventId] = useState(mockEvents[0]?.id ?? null);
@@ -174,6 +181,7 @@ export function EventsView() {
     const searchValue = deferredSearch.trim().toLowerCase();
 
     return events.filter((event) => {
+      if (event.archived) return false;
       const assignedProfiles = getAssignedProfiles(event);
       const searchableText = [
         event.title,
@@ -264,7 +272,7 @@ export function EventsView() {
     [sortedEvents],
   );
 
-  const selectedEvent =
+  const selectedCalendarEvent =
     events.find((event) => event.id === selectedEventId) ?? sortedEvents[0] ?? null;
 
   const selectedDayEvents = sortedEvents.filter((event) =>
@@ -274,6 +282,40 @@ export function EventsView() {
   const activeModalEvent = modal?.eventId
     ? events.find((event) => event.id === modal.eventId)
     : null;
+
+  const activePageEvent = selectedEvent?.id
+    ? events.find((event) => event.id === selectedEvent.id)
+    : null;
+
+  const summaryCards = useMemo(() => {
+    const visibleEvents = events.filter((event) => !event.archived);
+    return [
+      {
+        label: "Upcoming Events",
+        value: visibleEvents.filter((event) => ["Draft", "Scheduled"].includes(event.status)).length,
+        hint: "Draft or scheduled",
+        icon: CalendarDays,
+      },
+      {
+        label: "Ongoing Events",
+        value: visibleEvents.filter((event) => event.status === "Ongoing").length,
+        hint: "Happening now",
+        icon: ListChecks,
+      },
+      {
+        label: "Completed Events",
+        value: visibleEvents.filter((event) => event.status === "Completed").length,
+        hint: "Ready for review",
+        icon: Trophy,
+      },
+      {
+        label: "Pending Results",
+        value: visibleEvents.filter((event) => event.resultStatus === "Pending Results").length,
+        hint: "Needs result entry",
+        icon: Megaphone,
+      },
+    ];
+  }, [events]);
 
   const setFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -324,6 +366,52 @@ export function EventsView() {
     });
   };
 
+  const openAssignModal = (event) => {
+    setModal({
+      type: "assign",
+      eventId: event.id,
+      filters: { search: "", sport: "All sports", team: "All teams", yearLevel: "All years" },
+      pendingSelections: [],
+    });
+  };
+
+  const openResultsModal = (event) => {
+    setModal({ type: "results", eventId: event.id });
+  };
+
+  const openNoteModal = (event, note = null) => {
+    setModal({
+      type: "note",
+      mode: note ? "edit" : "add",
+      eventId: event.id,
+      noteId: note?.id ?? null,
+      values: {
+        title: note?.title ?? "",
+        body: note?.body ?? "",
+        visibility: note?.visibility ?? "Internal",
+        author: note?.author ?? event.organizer,
+      },
+      errors: {},
+    });
+  };
+
+  const openScheduleModal = (event) => {
+    setModal({
+      type: "schedule",
+      eventId: event.id,
+      values: {
+        venue: event.venue,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        callTime: event.callTime ?? event.startTime,
+        scheduleNotes: event.scheduleNotes ?? "",
+      },
+      errors: {},
+    });
+  };
+
   const saveEvent = () => {
     if (!modal || modal.type !== "event-form") return;
 
@@ -349,6 +437,23 @@ export function EventsView() {
       const nextEvent = {
         id: `EVT-${String(Date.now()).slice(-6)}`,
         ...payload,
+        archived: false,
+        callTime: payload.startTime,
+        scheduleNotes: payload.internalNotes,
+        publicNotes: payload.publicDescription ? [payload.publicDescription] : [],
+        internalNoteEntries: payload.internalNotes
+          ? [
+              {
+                id: `NOTE-${Date.now()}`,
+                title: "Staff note",
+                visibility: "Internal",
+                body: payload.internalNotes,
+                author: payload.organizer,
+                createdAt: new Date().toISOString(),
+              },
+            ]
+          : [],
+        activityLog: [`${new Date().toLocaleDateString()} - Event created locally.`],
         resultStatus: "Not Started",
         publishedAt: "",
         overallResult: "",
@@ -549,6 +654,107 @@ export function EventsView() {
     showFeedback("warning", "Results unpublished", `${event.title} results are internal again.`);
   };
 
+  const duplicateEvent = (event) => {
+    const nextEvent = {
+      ...event,
+      id: `EVT-${String(Date.now()).slice(-6)}`,
+      title: `${event.title} Copy`,
+      status: "Draft",
+      resultStatus: "Not Started",
+      resultVisibility: "Internal Only",
+      visibility: "Private",
+      publishedAt: "",
+      overallResult: "",
+      winner: "",
+      teamResult: "",
+      archived: false,
+      assignedAthletes: [],
+      activityLog: [`${new Date().toLocaleDateString()} - Duplicated from ${event.id}.`],
+      internalNoteEntries: [],
+    };
+
+    setEvents((current) => [nextEvent, ...current]);
+    setSelectedEventId(nextEvent.id);
+    selectEvent(nextEvent);
+    showFeedback("success", "Event duplicated", `${nextEvent.title} was created as a draft.`);
+  };
+
+  const saveNote = () => {
+    if (!modal || modal.type !== "note") return;
+
+    const errors = {};
+    if (!modal.values.title.trim()) errors.title = "Add a note title.";
+    if (!modal.values.body.trim()) errors.body = "Add note details before saving.";
+
+    if (Object.keys(errors).length > 0) {
+      setModal((current) => ({ ...current, errors }));
+      return;
+    }
+
+    setEvents((current) =>
+      current.map((event) => {
+        if (event.id !== modal.eventId) return event;
+
+        const note = {
+          id: modal.noteId ?? `NOTE-${Date.now()}`,
+          ...modal.values,
+          createdAt: new Date().toISOString(),
+        };
+
+        const nextNotes =
+          modal.mode === "edit"
+            ? (event.internalNoteEntries ?? []).map((entry) =>
+                entry.id === modal.noteId ? note : entry,
+              )
+            : [note, ...(event.internalNoteEntries ?? [])];
+
+        return {
+          ...event,
+          internalNoteEntries: nextNotes,
+          activityLog: [`${new Date().toLocaleDateString()} - Staff note saved.`, ...(event.activityLog ?? [])],
+        };
+      }),
+    );
+
+    showFeedback("success", "Note saved", "The event note was updated locally.");
+    setModal(null);
+  };
+
+  const saveSchedule = () => {
+    if (!modal || modal.type !== "schedule") return;
+
+    const errors = validateEventForm({
+      title: "Schedule update",
+      type: "Training",
+      sportCategory: "Other",
+      organizer: "Schedule",
+      visibility: "Private",
+      status: "Scheduled",
+      maxParticipants: "1",
+      ...modal.values,
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setModal((current) => ({ ...current, errors }));
+      return;
+    }
+
+    setEvents((current) =>
+      current.map((event) =>
+        event.id === modal.eventId
+          ? {
+              ...event,
+              ...modal.values,
+              activityLog: [`${new Date().toLocaleDateString()} - Schedule updated.`, ...(event.activityLog ?? [])],
+            }
+          : event,
+      ),
+    );
+
+    showFeedback("success", "Schedule updated", "Schedule and venue details were saved locally.");
+    setModal(null);
+  };
+
   const runDestructiveAction = () => {
     if (!modal || modal.type !== "confirm") return;
     const event = events.find((item) => item.id === modal.eventId);
@@ -557,10 +763,58 @@ export function EventsView() {
     if (modal.action === "cancel") {
       setEvents((current) =>
         current.map((item) =>
-          item.id === modal.eventId ? { ...item, status: "Cancelled" } : item,
+          item.id === modal.eventId
+            ? {
+                ...item,
+                status: "Cancelled",
+                activityLog: [`${new Date().toLocaleDateString()} - Event cancelled.`, ...(item.activityLog ?? [])],
+              }
+            : item,
         ),
       );
       showFeedback("warning", "Event cancelled", `${event.title} remains available for reference.`);
+    }
+
+    if (modal.action === "archive") {
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === modal.eventId
+            ? {
+                ...item,
+                archived: true,
+                activityLog: [`${new Date().toLocaleDateString()} - Event archived.`, ...(item.activityLog ?? [])],
+              }
+            : item,
+        ),
+      );
+      clearSelectedEvent();
+      showFeedback("warning", "Event archived", `${event.title} has been hidden from active event views.`);
+    }
+
+    if (modal.action === "remove-athlete") {
+      removeAssignedAthlete(modal.eventId, modal.athleteId);
+      showFeedback("warning", "Athlete removed", "The participant was removed from this event.");
+    }
+
+    if (modal.action === "unpublish") {
+      unpublishResults(modal.eventId);
+    }
+
+    if (modal.action === "delete-note") {
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === modal.eventId
+            ? {
+                ...item,
+                internalNoteEntries: (item.internalNoteEntries ?? []).filter(
+                  (note) => note.id !== modal.noteId,
+                ),
+                activityLog: [`${new Date().toLocaleDateString()} - Staff note deleted.`, ...(item.activityLog ?? [])],
+              }
+            : item,
+        ),
+      );
+      showFeedback("warning", "Note deleted", "The internal note was removed locally.");
     }
 
     setModal(null);
@@ -569,7 +823,7 @@ export function EventsView() {
   const handleCalendarSelectEvent = ({ resource }) => {
     setSelectedEventId(resource.id);
     setSelectedDate(parseISO(resource.startDate));
-    setModal({ type: "details", eventId: resource.id });
+    selectEvent(resource);
   };
 
   const handleCalendarSelectSlot = (slotInfo) => {
@@ -589,10 +843,117 @@ export function EventsView() {
   };
 
   const handleSaveResults = (eventId) => {
-    updateEventField(eventId, "resultStatus", "Results Recorded");
+    setEvents((current) =>
+      current.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              resultStatus: event.resultStatus === "Published" ? "Published" : "Results Recorded",
+              activityLog: [`${new Date().toLocaleDateString()} - Results saved.`, ...(event.activityLog ?? [])],
+            }
+          : event,
+      ),
+    );
     showFeedback("success", "Results saved", "Results are updated in local frontend state.");
     setModal(null);
   };
+
+  const handleSelectEvent = (event, initialTab = "overview") => {
+    setSelectedEventId(event.id);
+    setSelectedDate(parseISO(event.startDate));
+    setCurrentDate(parseISO(event.startDate));
+    selectEvent(event, initialTab);
+  };
+
+  if (selectedEvent) {
+    return (
+      <div className="space-y-6">
+        {feedback && (
+          <FeedbackPanel tone={feedback.tone} title={feedback.title}>
+            {feedback.message}
+          </FeedbackPanel>
+        )}
+
+        <EventInfoPage
+          event={activePageEvent}
+          initialTab={selectedEvent.initialTab}
+          canManageEvents={canManageEvents}
+          onBack={clearSelectedEvent}
+          onSelectTab={(tabId) =>
+            activePageEvent &&
+            setSelectedEvent({ id: activePageEvent.id, name: activePageEvent.title, initialTab: tabId })
+          }
+          onOpenEdit={openEditModal}
+          onOpenAssign={openAssignModal}
+          onOpenResults={openResultsModal}
+          onPublish={publishResults}
+          onUnpublish={(eventId) => setModal({ type: "confirm", action: "unpublish", eventId })}
+          onDuplicate={duplicateEvent}
+          onCancel={(event) => setModal({ type: "confirm", action: "cancel", eventId: event.id })}
+          onArchive={(event) => setModal({ type: "confirm", action: "archive", eventId: event.id })}
+          onRemoveAthlete={(eventId, athleteId) =>
+            setModal({ type: "confirm", action: "remove-athlete", eventId, athleteId })
+          }
+          onUpdateAssignmentField={updateAssignmentField}
+          onOpenNoteForm={openNoteModal}
+          onDeleteNote={(eventId, noteId) =>
+            setModal({ type: "confirm", action: "delete-note", eventId, noteId })
+          }
+          onOpenScheduleEdit={openScheduleModal}
+          onOpenAthleteProfile={() =>
+            showFeedback("info", "Athlete profile handoff", "Athlete profile navigation can be connected once shared event-to-athlete routing is expanded.")
+          }
+        />
+
+        <EventsModal
+          modal={modal}
+          event={activeModalEvent}
+          onClose={() => setModal(null)}
+          onFormChange={(key, value) =>
+            setModal((current) => ({
+              ...current,
+              values: { ...current.values, [key]: value },
+              errors: { ...current.errors, [key]: undefined },
+            }))
+          }
+          onSaveEvent={saveEvent}
+          onAssignmentFilterChange={(key, value) =>
+            setModal((current) => ({
+              ...current,
+              filters: { ...current.filters, [key]: value },
+            }))
+          }
+          onToggleSelection={(athleteId) =>
+            setModal((current) => ({
+              ...current,
+              pendingSelections: current.pendingSelections.includes(athleteId)
+                ? current.pendingSelections.filter((id) => id !== athleteId)
+                : [...current.pendingSelections, athleteId],
+            }))
+          }
+          onSaveAssignments={saveAssignments}
+          onRemoveAssignedAthlete={(eventId, athleteId) =>
+            setModal({ type: "confirm", action: "remove-athlete", eventId, athleteId })
+          }
+          onUpdateEventField={updateEventField}
+          onUpdateAssignmentField={updateAssignmentField}
+          onAddMetric={addMetric}
+          onUpdateMetric={updateMetric}
+          onRemoveMetric={removeMetric}
+          onSaveResults={handleSaveResults}
+          onPublish={publishResults}
+          onUnpublish={(eventId) => setModal({ type: "confirm", action: "unpublish", eventId })}
+          onOpenEdit={openEditModal}
+          onOpenAssign={openAssignModal}
+          onOpenResults={openResultsModal}
+          onConfirmAction={runDestructiveAction}
+          onSaveNote={saveNote}
+          onSaveSchedule={saveSchedule}
+          canManageEvents={canManageEvents}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -603,6 +964,8 @@ export function EventsView() {
       )}
 
       <EventsHeader onCreate={openCreateModal} />
+
+      <EventsSummaryCards items={summaryCards} />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <EventsFilters
@@ -618,7 +981,7 @@ export function EventsView() {
           calendarEvents={calendarEvents}
           currentDate={currentDate}
           selectedDayEvents={selectedDayEvents}
-          selectedEvent={selectedEvent}
+          selectedEvent={selectedCalendarEvent}
           onNavigate={setCurrentDate}
           onPrev={() => setCurrentDate((date) => subMonths(date, 1))}
           onNext={() => setCurrentDate((date) => addMonths(date, 1))}
@@ -626,17 +989,10 @@ export function EventsView() {
           onSelectEvent={handleCalendarSelectEvent}
           onSelectSlot={handleCalendarSelectSlot}
           onEventSelect={handleEventSelect}
-          onOpenDetails={(event) => setModal({ type: "details", eventId: event.id })}
+          onOpenDetails={handleSelectEvent}
           onOpenEdit={openEditModal}
-          onOpenAssign={(event) =>
-            setModal({
-              type: "assign",
-              eventId: event.id,
-              filters: { search: "", sport: "All sports", team: "All teams", yearLevel: "All years" },
-              pendingSelections: [],
-            })
-          }
-          onOpenResults={(event) => setModal({ type: "results", eventId: event.id })}
+          onOpenAssign={openAssignModal}
+          onOpenResults={openResultsModal}
           canManageEvents={canManageEvents}
         />
       )}
@@ -645,19 +1001,17 @@ export function EventsView() {
         <EventListPanel
           events={sortedEvents}
           canManageEvents={canManageEvents}
-          onOpenDetails={(event) => setModal({ type: "details", eventId: event.id })}
+          openMenuId={openActionMenuId}
+          setOpenMenuId={setOpenActionMenuId}
+          onOpenDetails={handleSelectEvent}
           onOpenEdit={openEditModal}
-          onOpenAssign={(event) =>
-            setModal({
-              type: "assign",
-              eventId: event.id,
-              filters: { search: "", sport: "All sports", team: "All teams", yearLevel: "All years" },
-              pendingSelections: [],
-            })
-          }
-          onOpenResults={(event) => setModal({ type: "results", eventId: event.id })}
+          onOpenAssign={openAssignModal}
+          onOpenResults={openResultsModal}
           onPublish={publishResults}
+          onUnpublish={(eventId) => setModal({ type: "confirm", action: "unpublish", eventId })}
+          onDuplicate={duplicateEvent}
           onCancel={(event) => setModal({ type: "confirm", action: "cancel", eventId: event.id })}
+          onArchive={(event) => setModal({ type: "confirm", action: "archive", eventId: event.id })}
         />
       )}
 
@@ -665,10 +1019,12 @@ export function EventsView() {
         <ResultsPanel
           events={sortedEvents}
           canManageEvents={canManageEvents}
-          onOpenDetails={(event) => setModal({ type: "details", eventId: event.id })}
-          onOpenResults={(event) => setModal({ type: "results", eventId: event.id })}
+          openMenuId={openActionMenuId}
+          setOpenMenuId={setOpenActionMenuId}
+          onOpenDetails={(event) => handleSelectEvent(event, "results")}
+          onOpenResults={openResultsModal}
           onPublish={publishResults}
-          onUnpublish={unpublishResults}
+          onUnpublish={(eventId) => setModal({ type: "confirm", action: "unpublish", eventId })}
         />
       )}
 
@@ -699,7 +1055,9 @@ export function EventsView() {
           }))
         }
         onSaveAssignments={saveAssignments}
-        onRemoveAssignedAthlete={removeAssignedAthlete}
+        onRemoveAssignedAthlete={(eventId, athleteId) =>
+          setModal({ type: "confirm", action: "remove-athlete", eventId, athleteId })
+        }
         onUpdateEventField={updateEventField}
         onUpdateAssignmentField={updateAssignmentField}
         onAddMetric={addMetric}
@@ -707,18 +1065,13 @@ export function EventsView() {
         onRemoveMetric={removeMetric}
         onSaveResults={handleSaveResults}
         onPublish={publishResults}
-        onUnpublish={unpublishResults}
+        onUnpublish={(eventId) => setModal({ type: "confirm", action: "unpublish", eventId })}
         onOpenEdit={openEditModal}
-        onOpenAssign={(event) =>
-          setModal({
-            type: "assign",
-            eventId: event.id,
-            filters: { search: "", sport: "All sports", team: "All teams", yearLevel: "All years" },
-            pendingSelections: [],
-          })
-        }
-        onOpenResults={(event) => setModal({ type: "results", eventId: event.id })}
+        onOpenAssign={openAssignModal}
+        onOpenResults={openResultsModal}
         onConfirmAction={runDestructiveAction}
+        onSaveNote={saveNote}
+        onSaveSchedule={saveSchedule}
         canManageEvents={canManageEvents}
       />
     </div>
@@ -746,6 +1099,38 @@ function EventsHeader({ onCreate }) {
           CREATE EVENT
         </button>
       </div>
+    </div>
+  );
+}
+
+function EventsSummaryCards({ items }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
+
+        return (
+          <article
+            key={item.label}
+            className="rounded-[22px] border border-border-subtle/50 bg-surface-card p-4 shadow-soft"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">
+                  {item.value}
+                </p>
+                <p className="mt-1 text-[12px] text-slate-500">{item.hint}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-blue-light text-brand-blue">
+                <Icon className="h-5 w-5" />
+              </div>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -1066,12 +1451,17 @@ function CalendarEventLabel({ event }) {
 function EventListPanel({
   events,
   canManageEvents,
+  openMenuId,
+  setOpenMenuId,
   onOpenDetails,
   onOpenEdit,
   onOpenAssign,
   onOpenResults,
   onPublish,
+  onUnpublish,
+  onDuplicate,
   onCancel,
+  onArchive,
 }) {
   return (
     <section className="rounded-[24px] border border-border-subtle/50 bg-surface-card shadow-soft">
@@ -1126,11 +1516,19 @@ function EventListPanel({
                   {canManageEvents ? (
                     <EventActionsMenu
                       event={event}
+                      open={openMenuId === event.id}
+                      onToggle={() =>
+                        setOpenMenuId((current) => (current === event.id ? null : event.id))
+                      }
+                      onClose={() => setOpenMenuId(null)}
                       onOpenEdit={onOpenEdit}
                       onOpenAssign={onOpenAssign}
                       onOpenResults={onOpenResults}
                       onPublish={onPublish}
+                      onUnpublish={onUnpublish}
+                      onDuplicate={onDuplicate}
                       onCancel={onCancel}
+                      onArchive={onArchive}
                     />
                   ) : null}
                 </div>
@@ -1145,51 +1543,46 @@ function EventListPanel({
 
 function EventActionsMenu({
   event,
+  open,
+  onToggle,
+  onClose,
   onOpenEdit,
   onOpenAssign,
   onOpenResults,
   onPublish,
+  onUnpublish,
+  onDuplicate,
   onCancel,
+  onArchive,
 }) {
   return (
-    <details className="group relative">
-      <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 [&::-webkit-details-marker]:hidden">
-        <MoreHorizontal className="h-4 w-4" />
-      </summary>
-      <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
-        <MenuAction label="Edit" onClick={() => onOpenEdit(event)} />
-        <MenuAction label="Assign Athletes" onClick={() => onOpenAssign(event)} />
-        <MenuAction label="Record Results" onClick={() => onOpenResults(event)} />
-        {event.resultStatus !== "Published" && (
-          <MenuAction label="Publish Results" onClick={() => onPublish(event.id)} />
-        )}
-        {event.status !== "Cancelled" && (
-          <MenuAction tone="danger" label="Cancel Event" onClick={() => onCancel(event)} />
-        )}
-      </div>
-    </details>
-  );
-}
-
-function MenuAction({ label, onClick, tone = "default" }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`block w-full rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors ${
-        tone === "danger"
-          ? "text-red-600 hover:bg-red-50"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-      }`}
-    >
-      {label}
-    </button>
+    <ActionMenu
+      label={`More actions for ${event.title}`}
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+      items={[
+        { label: "Edit Event", icon: PencilLine, onClick: () => onOpenEdit(event) },
+        { label: "Assign Athletes", icon: UserPlus, onClick: () => onOpenAssign(event) },
+        { label: "Record Results", icon: Trophy, onClick: () => onOpenResults(event) },
+        event.resultStatus === "Published"
+          ? { label: "Unpublish Results", icon: Megaphone, onClick: () => onUnpublish(event.id) }
+          : { label: "Publish Results", icon: Megaphone, onClick: () => onPublish(event.id) },
+        { label: "Duplicate Event", icon: ClipboardCopy, onClick: () => onDuplicate(event) },
+        ...(event.status !== "Cancelled"
+          ? [{ label: "Cancel Event", icon: Trash2, tone: "danger", onClick: () => onCancel(event) }]
+          : []),
+        { label: "Archive Event", icon: Archive, tone: "danger", onClick: () => onArchive(event) },
+      ]}
+    />
   );
 }
 
 function ResultsPanel({
   events,
   canManageEvents,
+  openMenuId,
+  setOpenMenuId,
   onOpenDetails,
   onOpenResults,
   onPublish,
@@ -1252,19 +1645,23 @@ function ResultsPanel({
                     View Results
                   </button>
                   {canManageEvents && (
-                    <details className="relative">
-                      <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 [&::-webkit-details-marker]:hidden">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </summary>
-                      <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
-                        <MenuAction label="Record Results" onClick={() => onOpenResults(event)} />
-                        {event.resultStatus === "Published" ? (
-                          <MenuAction label="Unpublish" onClick={() => onUnpublish(event.id)} />
-                        ) : (
-                          <MenuAction label="Publish Results" onClick={() => onPublish(event.id)} />
-                        )}
-                      </div>
-                    </details>
+                    <ActionMenu
+                      label={`More result actions for ${event.title}`}
+                      open={openMenuId === `results-${event.id}`}
+                      onToggle={() =>
+                        setOpenMenuId((current) =>
+                          current === `results-${event.id}` ? null : `results-${event.id}`,
+                        )
+                      }
+                      onClose={() => setOpenMenuId(null)}
+                      widthClass="w-48"
+                      items={[
+                        { label: "Record Results", icon: Trophy, onClick: () => onOpenResults(event) },
+                        event.resultStatus === "Published"
+                          ? { label: "Unpublish Results", icon: Megaphone, onClick: () => onUnpublish(event.id) }
+                          : { label: "Publish Results", icon: Megaphone, onClick: () => onPublish(event.id) },
+                      ]}
+                    />
                   )}
                 </div>
               </div>
@@ -1339,20 +1736,21 @@ function SelectedEventCard({
 }
 
 function SelectedEventActionsMenu({ event, onOpenEdit, onOpenAssign, onOpenResults }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <details className="relative inline-block text-left">
-      <summary
-        aria-label={`More actions for ${event.title}`}
-        className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-border-subtle bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 [&::-webkit-details-marker]:hidden"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </summary>
-      <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-border-subtle/70 bg-white p-1.5 shadow-float">
-        <MenuAction label="Edit" onClick={() => onOpenEdit(event)} />
-        <MenuAction label="Assign Athletes" onClick={() => onOpenAssign(event)} />
-        <MenuAction label="Record Results" onClick={() => onOpenResults(event)} />
-      </div>
-    </details>
+    <ActionMenu
+      label={`More actions for ${event.title}`}
+      open={open}
+      onToggle={() => setOpen((current) => !current)}
+      onClose={() => setOpen(false)}
+      widthClass="w-48"
+      items={[
+        { label: "Edit Event", icon: PencilLine, onClick: () => onOpenEdit(event) },
+        { label: "Assign Athletes", icon: UserPlus, onClick: () => onOpenAssign(event) },
+        { label: "Record Results", icon: Trophy, onClick: () => onOpenResults(event) },
+      ]}
+    />
   );
 }
 
@@ -1378,6 +1776,8 @@ function EventsModal({
   onOpenAssign,
   onOpenResults,
   onConfirmAction,
+  onSaveNote,
+  onSaveSchedule,
   canManageEvents,
 }) {
   if (!modal) return null;
@@ -1577,6 +1977,137 @@ function EventsModal({
   if (!event) return null;
 
   const assignedProfiles = getAssignedProfiles(event);
+
+  if (modal.type === "schedule") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={`Edit Schedule | ${event.title}`}
+        description="Update date, time, call time, venue, and schedule notes in local frontend state."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onSaveSchedule}>Save Schedule</PrimaryButton>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Venue/location" error={modal.errors.venue}>
+            <TextInput
+              value={modal.values.venue}
+              onChange={(changeEvent) =>
+                onFormChange("venue", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="Call time">
+            <TextInput
+              type="time"
+              value={modal.values.callTime}
+              onChange={(changeEvent) =>
+                onFormChange("callTime", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="Start date" error={modal.errors.startDate}>
+            <TextInput
+              type="date"
+              value={modal.values.startDate}
+              onChange={(changeEvent) =>
+                onFormChange("startDate", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="End date" error={modal.errors.endDate}>
+            <TextInput
+              type="date"
+              value={modal.values.endDate}
+              onChange={(changeEvent) =>
+                onFormChange("endDate", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="Start time" error={modal.errors.startTime}>
+            <TextInput
+              type="time"
+              value={modal.values.startTime}
+              onChange={(changeEvent) =>
+                onFormChange("startTime", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="End time" error={modal.errors.endTime}>
+            <TextInput
+              type="time"
+              value={modal.values.endTime}
+              onChange={(changeEvent) =>
+                onFormChange("endTime", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Schedule notes">
+              <TextArea
+                value={modal.values.scheduleNotes}
+                onChange={(changeEvent) =>
+                  onFormChange("scheduleNotes", changeEvent.target.value)
+                }
+              />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === "note") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title={modal.mode === "edit" ? "Edit Event Note" : "Add Event Note"}
+        description="Save a staff-facing note for this event."
+        footer={
+          <>
+            <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+            <PrimaryButton onClick={onSaveNote}>
+              {modal.mode === "edit" ? "Save Note" : "Add Note"}
+            </PrimaryButton>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <Field label="Note title" error={modal.errors.title}>
+            <TextInput
+              value={modal.values.title}
+              onChange={(changeEvent) =>
+                onFormChange("title", changeEvent.target.value)
+              }
+              placeholder="Logistics update"
+            />
+          </Field>
+          <Field label="Author">
+            <TextInput
+              value={modal.values.author}
+              onChange={(changeEvent) =>
+                onFormChange("author", changeEvent.target.value)
+              }
+            />
+          </Field>
+          <Field label="Note" error={modal.errors.body}>
+            <TextArea
+              value={modal.values.body}
+              onChange={(changeEvent) =>
+                onFormChange("body", changeEvent.target.value)
+              }
+              placeholder="Write the event note..."
+            />
+          </Field>
+        </div>
+      </Modal>
+    );
+  }
 
   if (modal.type === "details") {
     return (
@@ -2206,22 +2737,25 @@ function EventsModal({
   }
 
   if (modal.type === "confirm") {
+    const confirmCopy = getConfirmCopy(modal, event);
+
     return (
       <Modal
         open
         onClose={onClose}
-        title="Cancel Event"
-        description={`${event.title} will remain visible for reference but stop being treated as active.`}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
         footer={
           <>
-            <SecondaryButton onClick={onClose}>Keep event</SecondaryButton>
-            <PrimaryButton tone="gold" onClick={onConfirmAction}>Confirm cancellation</PrimaryButton>
+            <SecondaryButton onClick={onClose}>{confirmCopy.cancelLabel}</SecondaryButton>
+            <PrimaryButton tone={confirmCopy.tone} onClick={onConfirmAction}>
+              {confirmCopy.confirmLabel}
+            </PrimaryButton>
           </>
         }
       >
-        <FeedbackPanel tone="warning" title="Confirmation required">
-          This updates local frontend state only. A backend implementation should persist this
-          action and record who cancelled the event.
+        <FeedbackPanel tone={confirmCopy.panelTone} title="Confirmation required">
+          {confirmCopy.body}
         </FeedbackPanel>
       </Modal>
     );
@@ -2416,6 +2950,78 @@ function EmptyState({ title, body }) {
       <p className="mt-1 text-[13px] leading-6 text-slate-500">{body}</p>
     </div>
   );
+}
+
+function getConfirmCopy(modal, event) {
+  const defaults = {
+    title: "Confirm Action",
+    description: "This updates local frontend state.",
+    cancelLabel: "Cancel",
+    confirmLabel: "Confirm",
+    tone: "brand",
+    panelTone: "warning",
+    body: "This change is local for now. A backend implementation should persist it and record the acting user.",
+  };
+
+  if (modal.action === "cancel") {
+    return {
+      ...defaults,
+      title: "Cancel Event",
+      description: `${event.title} will remain visible for reference but stop being treated as active.`,
+      cancelLabel: "Keep event",
+      confirmLabel: "Confirm cancellation",
+      tone: "gold",
+    };
+  }
+
+  if (modal.action === "archive") {
+    return {
+      ...defaults,
+      title: "Archive Event",
+      description: `${event.title} will be hidden from active Events views.`,
+      cancelLabel: "Keep event",
+      confirmLabel: "Archive event",
+      tone: "danger",
+      panelTone: "danger",
+    };
+  }
+
+  if (modal.action === "remove-athlete") {
+    return {
+      ...defaults,
+      title: "Remove Athlete",
+      description: `Remove this athlete assignment from ${event.title}.`,
+      cancelLabel: "Keep athlete",
+      confirmLabel: "Remove athlete",
+      tone: "danger",
+      panelTone: "danger",
+    };
+  }
+
+  if (modal.action === "unpublish") {
+    return {
+      ...defaults,
+      title: "Unpublish Results",
+      description: `${event.title} results will return to internal-only visibility.`,
+      cancelLabel: "Keep published",
+      confirmLabel: "Unpublish results",
+      tone: "gold",
+    };
+  }
+
+  if (modal.action === "delete-note") {
+    return {
+      ...defaults,
+      title: "Delete Note",
+      description: `Delete this internal note from ${event.title}.`,
+      cancelLabel: "Keep note",
+      confirmLabel: "Delete note",
+      tone: "danger",
+      panelTone: "danger",
+    };
+  }
+
+  return defaults;
 }
 
 function getAssignedProfiles(event) {

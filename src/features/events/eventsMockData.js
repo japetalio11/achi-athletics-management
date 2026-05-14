@@ -144,7 +144,74 @@ export const athletePool = [
   },
 ];
 
-export const mockEvents = [
+const defaultEventEnhancements = {
+  "EVT-2601": {
+    callTime: "07:15",
+    scheduleNotes: "Stations open 30 minutes before testing. Medical clearance desk starts at 7:30 AM.",
+    publicNotes: ["Closed department testing session for approved basketball participants."],
+    internalNoteEntries: [
+      {
+        id: "NOTE-EVT-2601-1",
+        title: "Testing logistics",
+        visibility: "Internal",
+        body: "Assign one staff member to each station and keep raw sheets in the performance lab.",
+        author: "Athletics Admin",
+        createdAt: "2026-05-13T09:15:00",
+      },
+    ],
+    activityLog: ["2026-05-13 - Draft checklist reviewed by strength and conditioning."],
+  },
+  "EVT-2602": {
+    callTime: "14:30",
+    scheduleNotes: "Court setup and film equipment check before warmups.",
+    publicNotes: ["Varsity-only tactical session."],
+    internalNoteEntries: [
+      {
+        id: "NOTE-EVT-2602-1",
+        title: "Load monitoring",
+        visibility: "Internal",
+        body: "Track shoulder load for setters and liberos during late-set drills.",
+        author: "Coach Sarah Lim",
+        createdAt: "2026-05-14T08:45:00",
+      },
+    ],
+    activityLog: ["2026-05-14 - Session opened and initial rotation notes recorded."],
+  },
+  "EVT-2604": {
+    callTime: "08:00",
+    scheduleNotes: "Official warmup starts at 8:30 AM. Heat sheets must be archived after awards.",
+    publicNotes: ["Published results are available for public review."],
+    internalNoteEntries: [
+      {
+        id: "NOTE-EVT-2604-1",
+        title: "Archive packet",
+        visibility: "Internal",
+        body: "Attach timing sheets and podium photos once document storage is connected.",
+        author: "Coach Isabel Torres",
+        createdAt: "2026-05-11T10:20:00",
+      },
+    ],
+    activityLog: ["2026-05-11 - Results published after timing sheet verification."],
+  },
+  "EVT-2606": {
+    callTime: "06:15",
+    scheduleNotes: "Track opens early for warmups. Confirm timing system calibration before first heat.",
+    publicNotes: ["Official qualifiers will be visible after results are published."],
+    internalNoteEntries: [
+      {
+        id: "NOTE-EVT-2606-1",
+        title: "Timing verification",
+        visibility: "Internal",
+        body: "Compare timing sheet against manual backup before publication.",
+        author: "Coach Marcus Thorne",
+        createdAt: "2026-05-09T16:30:00",
+      },
+    ],
+    activityLog: ["2026-05-09 - Results recorded locally; publication pending verification."],
+  },
+};
+
+const eventRecords = [
   {
     id: "EVT-2601",
     title: "Pre-Season Basketball Combine",
@@ -514,3 +581,32 @@ export const mockEvents = [
     ],
   },
 ];
+
+export const mockEvents = eventRecords.map((event) => {
+  const enhancement = defaultEventEnhancements[event.id] ?? {};
+
+  return {
+    archived: false,
+    callTime: event.startTime,
+    scheduleNotes: event.internalNotes,
+    publicNotes: event.publicDescription ? [event.publicDescription] : [],
+    internalNoteEntries: event.internalNotes
+      ? [
+          {
+            id: `NOTE-${event.id}-BASE`,
+            title: "Staff note",
+            visibility: "Internal",
+            body: event.internalNotes,
+            author: event.organizer,
+            createdAt: `${event.startDate}T${event.startTime}:00`,
+          },
+        ]
+      : [],
+    activityLog: [
+      `${event.startDate} - Event created for ${event.sportCategory}.`,
+      ...(event.publishedAt ? [`${event.publishedAt.slice(0, 10)} - Results published.`] : []),
+    ],
+    ...event,
+    ...enhancement,
+  };
+});

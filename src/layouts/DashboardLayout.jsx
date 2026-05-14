@@ -4,12 +4,14 @@ import { useNavigation } from "../contexts/NavigationContext";
 import { ChevronRight, Home } from "lucide-react";
 
 export function DashboardLayout({ children }) {
-  const { currentView, selectedAthlete, selectedCoach, navigateTo } = useNavigation();
+  const { currentView, selectedAthlete, selectedCoach, selectedEvent, navigateTo } = useNavigation();
   const selectedProfile =
     currentView === "athletes"
       ? selectedAthlete
       : currentView === "coaches"
         ? selectedCoach
+        : currentView === "events"
+          ? selectedEvent
         : null;
 
   return (

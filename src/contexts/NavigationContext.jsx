@@ -32,13 +32,21 @@ const authViews = new Set([
 
 function getViewFromHash() {
   const hashRoute = window.location.hash.replace(/^#/, "") || "/";
+  if (hashRoute.startsWith("/events/")) return "events";
   return routeViews[hashRoute] ?? "dashboard";
+}
+
+function getEventFromHash() {
+  const hashRoute = window.location.hash.replace(/^#/, "") || "/";
+  const match = hashRoute.match(/^\/events\/([^/]+)$/);
+  return match ? { id: decodeURIComponent(match[1]), name: "Event Details", initialTab: "overview" } : null;
 }
 
 export function NavigationProvider({ children }) {
   const [currentView, setCurrentView] = useState(getViewFromHash);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedCoach, setSelectedCoach] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(getEventFromHash);
 
   const navigateTo = (view) => {
     setCurrentView(view);
@@ -49,6 +57,22 @@ export function NavigationProvider({ children }) {
     if (view !== "coaches") {
       setSelectedCoach(null);
     }
+    if (view !== "events") {
+      setSelectedEvent(null);
+    }
+  };
+
+  const selectEvent = (event, initialTab = "overview") => {
+    const nextEvent = { id: event.id, name: event.title ?? event.name ?? "Event Details", initialTab };
+    setCurrentView("events");
+    setSelectedEvent(nextEvent);
+    window.location.hash = `/events/${encodeURIComponent(event.id)}`;
+  };
+
+  const clearSelectedEvent = () => {
+    setSelectedEvent(null);
+    setCurrentView("events");
+    window.location.hash = viewRoutes.events;
   };
 
   useEffect(() => {
@@ -60,6 +84,11 @@ export function NavigationProvider({ children }) {
       }
       if (nextView !== "coaches") {
         setSelectedCoach(null);
+      }
+      if (nextView === "events") {
+        setSelectedEvent(getEventFromHash());
+      } else {
+        setSelectedEvent(null);
       }
     };
 
@@ -76,6 +105,10 @@ export function NavigationProvider({ children }) {
         setSelectedAthlete,
         selectedCoach,
         setSelectedCoach,
+        selectedEvent,
+        setSelectedEvent,
+        selectEvent,
+        clearSelectedEvent,
         isAuthView: authViews.has(currentView),
       }}
     >
