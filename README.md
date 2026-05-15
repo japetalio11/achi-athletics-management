@@ -1,16 +1,71 @@
-# React + Vite
+# ADNU Athletics Management Hub
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ADNU Athletics Management Hub is a React + Vite frontend for university athletics operations. The app now uses clean browser routing with a public landing page, public auth pages, a protected dashboard shell, and dedicated module detail routes.
 
-Currently, two official plugins are available:
+## Routes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Public
+  - `/`
+  - `/login`
+  - `/register`
+  - `/forgot-password`
+  - `/reset-password`
+  - `/verification-success`
+- Protected
+  - `/dashboard`
+  - `/athletes`
+  - `/athletes/:athleteId`
+  - `/coaches`
+  - `/coaches/:coachId`
+  - `/events`
+  - `/events/:eventId`
+  - `/inventory`
+  - `/inventory/:itemId`
+  - `/facilities`
+  - `/facilities/:facilityId`
+  - `/facilities/reservations/:reservationId`
+  - `/reports`
+  - `/settings`
+- Utility
+  - `/unauthorized`
+  - `/not-found`
 
-## React Compiler
+## Auth behavior
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Until backend authentication is wired, the app uses a lightweight frontend-only session stored in `localStorage`. Logging in creates the mock session, protected routes redirect unauthenticated users to `/login`, and logout clears the session.
 
-## Expanding the ESLint configuration
+## Local development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+Vite already handles SPA fallback in local development, so refreshing a route like `/athletes/ATH-001` or `/facilities/reservations/RSV-100` should continue to work.
+
+## Production SPA rewrites
+
+Browser routing needs a rewrite rule in production so deep links resolve to `index.html`.
+
+### Vercel
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
+### Netlify
+
+```txt
+/* /index.html 200
+```
+
+### Render or other static hosts
+
+Configure all non-asset requests to serve `index.html`.

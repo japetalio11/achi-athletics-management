@@ -1,322 +1,608 @@
-import { useMemo, useState } from "react";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { FeedbackPanel } from "../../components/ui/Modal";
+import { useNavigation } from "../../contexts/NavigationContext";
+import { FacilityInfoPage } from "./FacilityInfoPage";
+import { FacilityList } from "./FacilityList";
+import { FacilityModals } from "./FacilityModals";
+import { ReservationInfoPage } from "./ReservationInfoPage";
 import {
-  addMonths,
-  format,
-  getDay,
-  parse,
-  startOfWeek,
-  subMonths,
-} from "date-fns";
-import { enUS } from "date-fns/locale";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-import { ChevronLeft, ChevronRight, Plus, MoreVertical } from "lucide-react";
-
-const locales = {
-  "en-US": enUS,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek: (date) => startOfWeek(date, { weekStartsOn: 0 }),
-  getDay,
-  locales,
-});
-
-const defaultDate = new Date(2024, 8, 1);
-
-const createAllDay = (year, month, day) => ({
-  start: new Date(year, month, day, 0, 0, 0),
-  end: new Date(year, month, day, 23, 59, 59),
-  allDay: true,
-});
-
-const facilityEvents = [
-  {
-    title: "Basketball Varsity Practice",
-    ...createAllDay(2024, 8, 3),
-    category: "basketball",
-  },
-  {
-    title: "Floor Maintenance",
-    ...createAllDay(2024, 8, 5),
-    category: "maintenance",
-  },
-  {
-    title: "Regional Finals: ADNU vs BU",
-    ...createAllDay(2024, 8, 7),
-    category: "basketball",
-  },
-  {
-    title: "Volleyball Tryouts",
-    ...createAllDay(2024, 8, 10),
-    category: "volleyball",
-  },
-  {
-    title: "Emergency Light Inspection",
-    ...createAllDay(2024, 8, 17),
-    category: "emergency",
-  },
-];
+  createFacilityFromForm,
+  createReservationFromForm,
+  currentFacilityRole,
+  facilityToForm,
+  mergeFacilityForm,
+  mockFacilities,
+  mockReservations,
+  reservationToForm,
+  todayIso,
+} from "./facilityMockData";
+import {
+  emptyFacilityForm,
+  emptyMaintenanceForm,
+  emptyNoteForm,
+  emptyReservationForm,
+} from "./facilityTypes";
 
 export function FacilitiesView() {
-  const [currentDate, setCurrentDate] = useState(defaultDate);
-  const events = useMemo(() => facilityEvents, []);
+  const navigate = useNavigate();
+  const { facilityId, reservationId } = useParams();
+  const {
+    selectedFacility,
+    setSelectedFacility,
+    selectFacility,
+    returnToFacilities,
+    selectedFacilityReservation,
+    setSelectedFacilityReservation,
+    selectFacilityReservation,
+    returnToFacilityReservations,
+  } = useNavigation();
+  const [facilities, setFacilities] = useState(mockFacilities);
+  const [reservations, setReservations] = useState(mockReservations);
+  const [modal, setModal] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const canManageFacilities = currentFacilityRole === "Staff/Admin";
 
-  const handlePrev = () => setCurrentDate((prev) => subMonths(prev, 1));
-  const handleNext = () => setCurrentDate((prev) => addMonths(prev, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  useEffect(() => {
+    if (!feedback) return undefined;
+    const timer = window.setTimeout(() => setFeedback(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
 
-  const eventPropGetter = (event) => ({
-    className: `adnu-event adnu-event--${event.category ?? "default"}`,
-  });
+  const activeFacility = useMemo(() => {
+    if (!selectedFacility?.id) return null;
+    return facilities.find((facility) => facility.id === selectedFacility.id) ?? null;
+  }, [facilities, selectedFacility]);
+
+  const activeReservation = useMemo(() => {
+    if (!selectedFacilityReservation?.id) return null;
+    return reservations.find((reservation) => reservation.id === selectedFacilityReservation.id) ?? null;
+  }, [reservations, selectedFacilityReservation]);
+
+  const activeReservationFacility = useMemo(() => {
+    if (!activeReservation?.facilityId) return null;
+    return facilities.find((facility) => facility.id === activeReservation.facilityId) ?? null;
+  }, [activeReservation, facilities]);
+
+  useEffect(() => {
+    if (reservationId && !activeReservation) {
+      navigate("/not-found", { replace: true });
+      return;
+    }
+
+    if (facilityId && !reservationId && !activeFacility) {
+      navigate("/not-found", { replace: true });
+    }
+  }, [activeFacility, activeReservation, facilityId, navigate, reservationId]);
+
+  useEffect(() => {
+    if (!activeFacility || !selectedFacility?.id) return;
+    if (selectedFacility.name === activeFacility.name && selectedFacility.initialTab) {
+      return;
+    }
+
+    setSelectedFacility({
+      id: activeFacility.id,
+      name: activeFacility.name,
+      initialTab: selectedFacility.initialTab ?? "overview",
+    });
+  }, [activeFacility, selectedFacility, setSelectedFacility]);
+
+  useEffect(() => {
+    if (!activeReservation || !selectedFacilityReservation?.id) return;
+    if (
+      selectedFacilityReservation.name === activeReservation.activityName &&
+      selectedFacilityReservation.initialTab
+    ) {
+      return;
+    }
+
+    setSelectedFacilityReservation({
+      id: activeReservation.id,
+      name: activeReservation.activityName,
+      initialTab: selectedFacilityReservation.initialTab ?? "overview",
+    });
+  }, [
+    activeReservation,
+    selectedFacilityReservation,
+    setSelectedFacilityReservation,
+  ]);
+
+  useLayoutEffect(() => {
+    if (!selectedFacility && !selectedFacilityReservation) return;
+
+    window.requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector("main.overflow-y-auto");
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, [selectedFacility?.id, selectedFacilityReservation?.id]);
+
+  const showFeedback = (tone, title, message) => setFeedback({ tone, title, message });
+  const closeModal = () => setModal(null);
+
+  const openModal = (payload) => {
+    if (payload.type === "facility-form") {
+      setModal({
+        ...payload,
+        values: payload.mode === "edit" ? facilityToForm(payload.facility) : { ...emptyFacilityForm },
+        errors: {},
+      });
+      return;
+    }
+
+    if (payload.type === "reservation-form") {
+      const reservation = payload.reservation;
+      setModal({
+        ...payload,
+        values: reservation
+          ? reservationToForm(reservation)
+          : {
+              ...emptyReservationForm,
+              facilityId: payload.facility?.id ?? "",
+              reservationDate: "2026-05-24",
+              startTime: payload.slot?.startTime ?? "08:00",
+              endTime: payload.slot?.endTime ?? "10:00",
+            },
+        errors: {},
+      });
+      return;
+    }
+
+    if (payload.type === "maintenance-form") {
+      const record = payload.record;
+      setModal({
+        ...payload,
+        values: record
+          ? {
+              facilityId: record.facilityId,
+              title: record.title,
+              reason: record.reason,
+              startDate: record.startDate,
+              endDate: record.endDate,
+              startTime: record.startTime,
+              endTime: record.endTime,
+              status: record.status,
+              createdBy: record.createdBy,
+              notes: record.notes,
+            }
+          : {
+              ...emptyMaintenanceForm,
+              facilityId: payload.facility?.id ?? "",
+              startDate: "2026-05-24",
+              endDate: "2026-05-24",
+            },
+        errors: {},
+      });
+      return;
+    }
+
+    if (payload.type === "note-form") {
+      setModal({
+        ...payload,
+        values: payload.note
+          ? {
+              title: payload.note.title,
+              body: payload.note.body,
+              visibility: payload.note.visibility,
+              author: payload.note.author,
+            }
+          : { ...emptyNoteForm },
+        errors: {},
+      });
+      return;
+    }
+
+    if (payload.type === "document-upload") {
+      setModal({ ...payload, documentId: payload.document?.id ?? payload.reservation.documents[0]?.id, fileName: "" });
+      return;
+    }
+
+    if (payload.type === "review") {
+      const missingDocuments = payload.reservation.documents
+        .filter((document) => document.status === "Missing" || document.status === "Rejected")
+        .map((document) => document.id);
+      setModal({ ...payload, selectedDocuments: missingDocuments, note: "", reason: "", message: "", staffNote: "" });
+      return;
+    }
+
+    setModal(payload);
+  };
+
+  const saveFacility = (payload) => {
+    if (payload.mode === "edit") {
+      const updatedFacility = mergeFacilityForm(payload.facility, payload.values);
+      setFacilities((current) => current.map((facility) => (facility.id === updatedFacility.id ? updatedFacility : facility)));
+      showFeedback("success", "Facility updated", `${updatedFacility.name} was updated in local state.`);
+      closeModal();
+      return;
+    }
+
+    const newFacility = createFacilityFromForm(payload.values);
+    setFacilities((current) => [newFacility, ...current]);
+    selectFacility(newFacility);
+    showFeedback("success", "Facility added", `${newFacility.name} is ready for reservation workflows.`);
+    closeModal();
+  };
+
+  const saveReservation = (payload) => {
+    if (payload.mode === "edit") {
+      const facility = facilities.find((candidate) => candidate.id === payload.values.facilityId);
+      const updatedReservation = {
+        ...payload.reservation,
+        ...payload.values,
+        facilityName: facility?.name ?? payload.reservation.facilityName,
+        participantCount: Number(payload.values.participantCount),
+        updatedAt: todayIso(),
+        activityLog: [
+          `${new Date().toLocaleDateString()} - Reservation request updated locally.`,
+          ...(payload.reservation.activityLog ?? []),
+        ],
+      };
+      setReservations((current) =>
+        current.map((reservation) => (reservation.id === updatedReservation.id ? updatedReservation : reservation)),
+      );
+      showFeedback("success", "Reservation updated", `${updatedReservation.activityName} was updated in local state.`);
+      closeModal();
+      return;
+    }
+
+    const newReservation = createReservationFromForm(payload.values, facilities);
+    setReservations((current) => [newReservation, ...current]);
+    selectFacilityReservation(newReservation);
+    showFeedback("success", "Reservation submitted", `${newReservation.activityName} is now pending staff review.`);
+    closeModal();
+  };
+
+  const saveMaintenance = (payload) => {
+    const facilityId = payload.values.facilityId;
+    const record = {
+      id: payload.record?.id ?? `BLK-${String(Date.now()).slice(-6)}`,
+      facilityId,
+      title: payload.values.title.trim(),
+      reason: payload.values.reason.trim(),
+      startDate: payload.values.startDate,
+      endDate: payload.values.endDate,
+      startTime: payload.values.startTime,
+      endTime: payload.values.endTime,
+      status: payload.values.status,
+      createdBy: payload.values.createdBy || "Athletics Staff",
+      notes: payload.values.notes.trim(),
+    };
+
+    setFacilities((current) =>
+      current.map((facility) => {
+        if (facility.id !== facilityId) return facility;
+        const existingRecords = facility.maintenanceRecords ?? [];
+        const maintenanceRecords = payload.record
+          ? existingRecords.map((entry) => (entry.id === payload.record.id ? record : entry))
+          : [record, ...existingRecords];
+        const status = ["Scheduled", "Ongoing"].includes(record.status) ? "Under Maintenance" : facility.status;
+        return { ...facility, status, maintenanceRecords, updatedAt: todayIso() };
+      }),
+    );
+    showFeedback("success", "Maintenance saved", `${record.title} was saved as a facility blockout.`);
+    closeModal();
+  };
+
+  const saveNote = (payload) => {
+    const note = {
+      id: payload.note?.id ?? `NOTE-${String(Date.now()).slice(-6)}`,
+      title: payload.values.title.trim(),
+      body: payload.values.body.trim(),
+      visibility: payload.values.visibility,
+      author: payload.values.author.trim() || "Athletics Staff",
+      createdAt: payload.note?.createdAt ?? todayIso(),
+    };
+
+    setFacilities((current) =>
+      current.map((facility) => {
+        if (facility.id !== payload.facility.id) return facility;
+        const notes = payload.note
+          ? facility.notes.map((entry) => (entry.id === payload.note.id ? note : entry))
+          : [note, ...facility.notes];
+        return { ...facility, notes, updatedAt: todayIso() };
+      }),
+    );
+    showFeedback("success", payload.note ? "Note updated" : "Note added", `${note.title} was saved locally.`);
+    closeModal();
+  };
+
+  const uploadDocument = (reservationId, documentId, fileName) => {
+    if (!fileName) {
+      setModal((current) => ({ ...current, fileName: "", error: "Choose a file before saving." }));
+      showFeedback("warning", "No file selected", "Choose a document file before saving the mock upload.");
+      return;
+    }
+
+    setReservations((current) =>
+      current.map((reservation) => {
+        if (reservation.id !== reservationId) return reservation;
+        const documents = reservation.documents.map((document) =>
+          document.id === documentId
+            ? { ...document, fileName, status: "Submitted", uploadedAt: todayIso(), note: "" }
+            : document,
+        );
+        const documentStatus = documents.some((document) => document.required && document.status === "Missing")
+          ? "Missing"
+          : "Submitted";
+        return appendReservationActivity(
+          { ...reservation, documents, documentStatus, updatedAt: todayIso() },
+          `Document uploaded: ${fileName}.`,
+        );
+      }),
+    );
+    showFeedback("success", "Document uploaded", `${fileName} was saved to local reservation state.`);
+    closeModal();
+  };
+
+  const reviewReservation = (payload) => {
+    setReservations((current) =>
+      current.map((reservation) => {
+        if (reservation.id !== payload.reservation.id) return reservation;
+
+        if (payload.action === "approve") {
+          return appendReservationActivity(
+            {
+              ...reservation,
+              status: "Approved",
+              documentStatus: "Approved",
+              reviewer: "Athletics Staff",
+              reviewNote: payload.note?.trim() || "Approved by Athletics Staff.",
+              staffNote: payload.staffNote?.trim() || reservation.staffNote,
+              documents: reservation.documents.map((document) =>
+                document.status === "Submitted" || document.status === "Pending Review"
+                  ? { ...document, status: "Approved", reviewedBy: "Athletics Staff" }
+                  : document,
+              ),
+              updatedAt: todayIso(),
+            },
+            "Request approved by Athletics Staff.",
+          );
+        }
+
+        if (payload.action === "reject") {
+          return appendReservationActivity(
+            {
+              ...reservation,
+              status: "Rejected",
+              documentStatus: "Rejected",
+              reviewer: "Athletics Staff",
+              reviewNote: payload.reason.trim(),
+              staffNote: payload.staffNote?.trim() || reservation.staffNote,
+              updatedAt: todayIso(),
+            },
+            `Request rejected: ${payload.reason.trim()}`,
+          );
+        }
+
+        const selectedDocuments = payload.selectedDocuments ?? [];
+        return appendReservationActivity(
+          {
+            ...reservation,
+            status: "Pending Review",
+            documentStatus: "Missing",
+            reviewer: "Athletics Staff",
+            reviewNote: payload.message.trim(),
+            staffNote: payload.staffNote?.trim() || reservation.staffNote,
+            documents: reservation.documents.map((document) =>
+              selectedDocuments.includes(document.id)
+                ? { ...document, status: "Missing", note: payload.message.trim() }
+                : document,
+            ),
+            updatedAt: todayIso(),
+          },
+          `Missing documents requested: ${payload.message.trim()}`,
+        );
+      }),
+    );
+    showFeedback("success", "Reservation reviewed", "The staff decision was saved in local state.");
+    closeModal();
+  };
+
+  const confirmAction = (payload) => {
+    if (payload.action === "archive-facility") {
+      setFacilities((current) =>
+        current.map((facility) =>
+          facility.id === payload.facility.id ? { ...facility, archived: true, status: "Unavailable" } : facility,
+        ),
+      );
+      clearSelectedFacility();
+      showFeedback("warning", "Facility archived", `${payload.facility.name} was hidden from active views.`);
+      closeModal();
+      return;
+    }
+
+    if (payload.action === "cancel-reservation") {
+      updateReservationStatus(payload.reservation.id, "Cancelled", "Reservation cancelled by Athletics Staff.", "warning");
+      return;
+    }
+
+    if (payload.action === "complete-reservation") {
+      updateReservationStatus(payload.reservation.id, "Completed", "Reservation marked completed.", "success");
+      return;
+    }
+
+    if (payload.action === "no-show-reservation") {
+      updateReservationStatus(payload.reservation.id, "No Show", "Reservation marked no show.", "danger");
+      return;
+    }
+
+    if (payload.action === "resolve-maintenance") {
+      setFacilities((current) =>
+        current.map((facility) =>
+          facility.id === payload.facility.id
+            ? {
+                ...facility,
+                status: facility.status === "Under Maintenance" ? "Available" : facility.status,
+                maintenanceRecords: facility.maintenanceRecords.map((record) =>
+                  record.id === payload.record.id ? { ...record, status: "Resolved" } : record,
+                ),
+                updatedAt: todayIso(),
+              }
+            : facility,
+        ),
+      );
+      showFeedback("success", "Blockout resolved", `${payload.record.title} was marked resolved.`);
+      closeModal();
+      return;
+    }
+
+    if (payload.action === "delete-maintenance") {
+      setFacilities((current) =>
+        current.map((facility) =>
+          facility.id === payload.facility.id
+            ? {
+                ...facility,
+                maintenanceRecords: facility.maintenanceRecords.filter((record) => record.id !== payload.record.id),
+                updatedAt: todayIso(),
+              }
+            : facility,
+        ),
+      );
+      showFeedback("warning", "Blockout deleted", `${payload.record.title} was removed.`);
+      closeModal();
+      return;
+    }
+
+    if (payload.action === "delete-note") {
+      setFacilities((current) =>
+        current.map((facility) =>
+          facility.id === payload.facility.id
+            ? {
+                ...facility,
+                notes: facility.notes.filter((note) => note.id !== payload.note.id),
+                updatedAt: todayIso(),
+              }
+            : facility,
+        ),
+      );
+      showFeedback("warning", "Note deleted", `${payload.note.title} was removed.`);
+      closeModal();
+    }
+  };
+
+  const updateReservationStatus = (reservationId, status, activity, tone) => {
+    setReservations((current) =>
+      current.map((reservation) =>
+        reservation.id === reservationId
+          ? appendReservationActivity({ ...reservation, status, updatedAt: todayIso() }, activity)
+          : reservation,
+      ),
+    );
+    showFeedback(tone, "Reservation updated", activity);
+    closeModal();
+  };
+
+  if (selectedFacilityReservation) {
+    return (
+      <div className="space-y-6">
+        {feedback && <FeedbackPanel tone={feedback.tone} title={feedback.title}>{feedback.message}</FeedbackPanel>}
+        <ReservationInfoPage
+          reservation={activeReservation}
+          facility={activeReservationFacility}
+          initialTab={selectedFacilityReservation.initialTab}
+          onBack={returnToFacilityReservations}
+          onSelectTab={(tabId) =>
+            activeReservation &&
+            setSelectedFacilityReservation({
+              id: activeReservation.id,
+              name: activeReservation.activityName,
+              initialTab: tabId,
+            })
+          }
+          onSelectFacility={(facility) => facility && selectFacility(facility)}
+          onOpenModal={openModal}
+        />
+        <FacilityModals
+          modal={modal}
+          setModal={setModal}
+          facilities={facilities}
+          onClose={closeModal}
+          onSaveFacility={saveFacility}
+          onSaveReservation={saveReservation}
+          onSaveMaintenance={saveMaintenance}
+          onSaveNote={saveNote}
+          onUploadDocument={uploadDocument}
+          onReviewReservation={reviewReservation}
+          onConfirmAction={confirmAction}
+        />
+      </div>
+    );
+  }
+
+  if (selectedFacility) {
+    return (
+      <div className="space-y-6">
+        {feedback && <FeedbackPanel tone={feedback.tone} title={feedback.title}>{feedback.message}</FeedbackPanel>}
+        <FacilityInfoPage
+          facility={activeFacility}
+          reservations={reservations}
+          canManageFacilities={canManageFacilities}
+          initialTab={selectedFacility.initialTab}
+          onBack={returnToFacilities}
+          onSelectTab={(tabId) =>
+            activeFacility &&
+            setSelectedFacility({
+              id: activeFacility.id,
+              name: activeFacility.name,
+              initialTab: tabId,
+            })
+          }
+          onSelectReservation={selectFacilityReservation}
+          onOpenModal={openModal}
+        />
+        <FacilityModals
+          modal={modal}
+          setModal={setModal}
+          facilities={facilities}
+          onClose={closeModal}
+          onSaveFacility={saveFacility}
+          onSaveReservation={saveReservation}
+          onSaveMaintenance={saveMaintenance}
+          onSaveNote={saveNote}
+          onUploadDocument={uploadDocument}
+          onReviewReservation={reviewReservation}
+          onConfirmAction={confirmAction}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-        <div className="xl:col-span-2 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-bold text-brand-blue tracking-wider uppercase mb-1">
-                Facility Schedule
-              </p>
-              <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-                {format(currentDate, "MMMM yyyy")}
-              </h1>
-            </div>
-            <div className="flex items-center bg-surface-card border border-border-subtle rounded-lg shadow-sm overflow-hidden">
-              <button
-                type="button"
-                onClick={handlePrev}
-                className="px-3 py-2 hover:bg-slate-50 transition-colors text-slate-500"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleToday}
-                className="px-4 py-2 border-x border-border-subtle font-bold text-[13px] text-slate-700"
-              >
-                TODAY
-              </button>
-              <button
-                type="button"
-                onClick={handleNext}
-                className="px-3 py-2 hover:bg-slate-50 transition-colors text-slate-500"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft overflow-hidden relative">
-            <Calendar
-              localizer={localizer}
-              events={events}
-              startAccessor="start"
-              endAccessor="end"
-              view="month"
-              views={["month"]}
-              date={currentDate}
-              onNavigate={setCurrentDate}
-              toolbar={false}
-              popup
-              className="adnu-calendar"
-              style={{ minHeight: 720 }}
-              eventPropGetter={eventPropGetter}
-              formats={{
-                weekdayFormat: (date, culture, calendarLocalizer) =>
-                  calendarLocalizer.format(date, "EEE", culture).toUpperCase(),
-                dayFormat: (date, culture, calendarLocalizer) =>
-                  calendarLocalizer.format(date, "d", culture),
-              }}
-            />
-
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface-card/90 backdrop-blur-md px-6 py-3 rounded-full border border-border-subtle shadow-float flex items-center gap-6 z-10">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-brand-blue"></div>
-                <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">
-                  Basketball
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div>
-                <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">
-                  Volleyball
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-600"></div>
-                <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">
-                  Maintenance
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-600"></div>
-                <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">
-                  Emergency
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft p-7">
-            <h2 className="text-[18px] font-bold text-slate-900 mb-6">
-              Quick Reserve
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                  Facility Name
-                </label>
-                <div className="relative">
-                  <select className="w-full appearance-none bg-slate-50 border border-border-subtle rounded-xl py-2.5 pl-4 pr-10 text-[13px] font-medium text-slate-700 outline-none focus:border-brand-blue/30 focus:ring-4 focus:ring-brand-blue/5 transition-all">
-                    <option>Main Gymnasium</option>
-                    <option>Aquatics Center</option>
-                    <option>Upper Field</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Date
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="mm/dd/yy"
-                    className="w-full bg-slate-50 border border-border-subtle rounded-xl py-2.5 px-4 text-[13px] font-medium text-slate-700 outline-none focus:border-brand-blue/30 focus:ring-4 focus:ring-brand-blue/5 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Type
-                  </label>
-                  <div className="relative">
-                    <select className="w-full appearance-none bg-slate-50 border border-border-subtle rounded-xl py-2.5 pl-4 pr-10 text-[13px] font-medium text-slate-700 outline-none focus:border-brand-blue/30 focus:ring-4 focus:ring-brand-blue/5 transition-all">
-                      <option>Basketball</option>
-                      <option>Volleyball</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 9l-7 7-7-7"
-                        ></path>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <button className="w-full mt-2 flex items-center justify-center gap-2 bg-brand-blue text-white px-4 py-3.5 rounded-xl font-bold hover:bg-brand-blue-hover transition-colors shadow-soft text-[13px] tracking-wide">
-                <Plus className="w-4 h-4" />
-                Request Booking
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-surface-card rounded-[24px] border border-border-subtle/40 shadow-soft overflow-hidden">
-            <div className="p-6 border-b border-border-subtle/50 flex items-center justify-between">
-              <h2 className="text-[16px] font-bold text-slate-900">
-                Pending Approvals
-              </h2>
-              <span className="px-2.5 py-1 bg-brand-blue-light text-brand-blue text-[10px] font-bold rounded-md tracking-wider uppercase">
-                3 New
-              </span>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <h3 className="font-bold text-slate-900 text-[14px]">
-                  Community Open Day
-                </h3>
-                <p className="text-[12px] text-slate-500 mt-1 mb-4">
-                  Main Gym • Sept 25, 08:00 AM
-                </p>
-                <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
-                    Approve
-                  </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
-                    Deny
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <h3 className="font-bold text-slate-900 text-[14px]">
-                  Varsity Volleyball
-                </h3>
-                <p className="text-[12px] text-slate-500 mt-1 mb-4">
-                  Main Gym • Sept 28, 04:00 PM
-                </p>
-                <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
-                    Approve
-                  </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
-                    Deny
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl border border-border-subtle/50 shadow-sm relative group">
-                <button className="absolute top-4 right-4 text-slate-400 hover:text-brand-blue transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <h3 className="font-bold text-slate-900 text-[14px]">
-                  Annual Inspection
-                </h3>
-                <p className="text-[12px] text-slate-500 mt-1 mb-4">
-                  All Facilities • Oct 01, 09:00 AM
-                </p>
-                <div className="flex items-center gap-3">
-                  <button className="flex-1 py-2 rounded-lg border border-brand-blue text-brand-blue font-bold text-[11px] tracking-wider uppercase hover:bg-brand-blue hover:text-white transition-colors">
-                    Approve
-                  </button>
-                  <button className="flex-1 py-2 rounded-lg border border-red-500 text-red-600 font-bold text-[11px] tracking-wider uppercase hover:bg-red-50 transition-colors">
-                    Deny
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {feedback && <FeedbackPanel tone={feedback.tone} title={feedback.title}>{feedback.message}</FeedbackPanel>}
+      <FacilityList
+        facilities={facilities}
+        reservations={reservations}
+        canManageFacilities={canManageFacilities}
+        onSelectFacility={selectFacility}
+        onSelectReservation={selectFacilityReservation}
+        onOpenModal={openModal}
+      />
+      <FacilityModals
+        modal={modal}
+        setModal={setModal}
+        facilities={facilities}
+        onClose={closeModal}
+        onSaveFacility={saveFacility}
+        onSaveReservation={saveReservation}
+        onSaveMaintenance={saveMaintenance}
+        onSaveNote={saveNote}
+        onUploadDocument={uploadDocument}
+        onReviewReservation={reviewReservation}
+        onConfirmAction={confirmAction}
+      />
     </div>
   );
+}
+
+function appendReservationActivity(reservation, entry) {
+  return {
+    ...reservation,
+    activityLog: [`${new Date().toLocaleDateString()} - ${entry}`, ...(reservation.activityLog ?? [])],
+  };
 }
